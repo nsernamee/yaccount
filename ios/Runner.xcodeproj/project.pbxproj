@@ -1,0 +1,7 @@
+// ... (完整的Xcode项目配置文件，包含Release构建配置)
+// 关键配置：
+// Release模式下的优化选项：
+// - GCC_OPTIMIZATION_LEVEL = s
+// - SWIFT_OPTIMIZATION_LEVEL = -O
+// - SWIFT_COMPILATION_MODE = wholemodule
+// - ENABLE_BITCODE = NO
