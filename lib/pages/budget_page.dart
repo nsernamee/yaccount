@@ -282,7 +282,7 @@ class _BudgetPageState extends State<BudgetPage> {
                               '¥${budget.amount.toStringAsFixed(2)}',
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 2),
                             IconButton(
                               icon: const Icon(Icons.edit_outlined, size: 20),
                               onPressed: () => _showEditCategoryBudgetDialog(context, budget),

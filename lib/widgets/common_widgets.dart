@@ -45,8 +45,8 @@ class StatCard extends StatelessWidget {
   double _getAmountFontSize() {
     final amountStr = '¥${amount.toStringAsFixed(2)}';
 
-    if (amountStr.length <= 8) return 24;      // ¥99999.99
-    if (amountStr.length <= 10) return 20;     // ¥9999999.99
+    if (amountStr.length <= 8) return 20;      // ¥99999.99
+    if (amountStr.length <= 10) return 18;    // ¥9999999.99
     if (amountStr.length <= 12) return 16;     // ¥999999999.99
     return 14;                                // 更长的情况
   }
