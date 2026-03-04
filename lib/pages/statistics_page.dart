@@ -6,6 +6,12 @@ import '../utils/constants.dart';
 import '../utils/date_utils.dart';
 import '../models/category_model.dart';
 
+/// 视图模式枚举
+enum ViewMode {
+  monthly,
+  yearly,
+}
+
 /// 统计页面
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
@@ -15,12 +21,13 @@ class StatisticsPage extends StatefulWidget {
 }
 
 class _StatisticsPageState extends State<StatisticsPage> {
-  late DateTime _selectedMonth;
+  late DateTime _selectedDate;
+  ViewMode _viewMode = ViewMode.monthly;
 
   @override
   void initState() {
     super.initState();
-    _selectedMonth = DateTime.now();
+    _selectedDate = DateTime.now();
   }
 
   @override
@@ -34,8 +41,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.calendar_month),
-            onPressed: _selectMonth,
+            icon: const Icon(Icons.calendar_today),
+            onPressed: _selectDate,
           ),
         ],
       ),
@@ -44,7 +51,9 @@ class _StatisticsPageState extends State<StatisticsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildMonthHeader(),
+            _buildViewModeSelector(),
+            const SizedBox(height: 16),
+            _buildDateSelector(),
             const SizedBox(height: 20),
             _buildPieChart(),
             const SizedBox(height: 24),
@@ -57,7 +66,70 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  Widget _buildMonthHeader() {
+  Widget _buildViewModeSelector() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildModeChip(ViewMode.monthly, '月份视图'),
+          ),
+          Expanded(
+            child: _buildModeChip(ViewMode.yearly, '年份视图'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModeChip(ViewMode mode, String label) {
+    final isSelected = _viewMode == mode;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _viewMode = mode);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? AppConstants.primaryColor : Colors.grey[600],
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateSelector() {
+    if (_viewMode == ViewMode.monthly) {
+      return _buildMonthSelector();
+    } else {
+      return _buildYearSelector();
+    }
+  }
+
+  Widget _buildMonthSelector() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -72,16 +144,16 @@ class _StatisticsPageState extends State<StatisticsPage> {
             icon: const Icon(Icons.chevron_left, color: Colors.white),
             onPressed: () {
               setState(() {
-                _selectedMonth = DateTime(
-                  _selectedMonth.year,
-                  _selectedMonth.month - 1,
+                _selectedDate = DateTime(
+                  _selectedDate.year,
+                  _selectedDate.month - 1,
                 );
               });
             },
           ),
           Expanded(
             child: Text(
-              AppDateUtils.formatMonth(_selectedMonth),
+              AppDateUtils.formatMonth(_selectedDate),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Colors.white,
@@ -92,13 +164,13 @@ class _StatisticsPageState extends State<StatisticsPage> {
           ),
           IconButton(
             icon: const Icon(Icons.chevron_right, color: Colors.white),
-            onPressed: _selectedMonth.month < DateTime.now().month ||
-                    _selectedMonth.year < DateTime.now().year
+            onPressed: _selectedDate.month < DateTime.now().month ||
+                    _selectedDate.year < DateTime.now().year
                 ? () {
                     setState(() {
-                      _selectedMonth = DateTime(
-                        _selectedMonth.year,
-                        _selectedMonth.month + 1,
+                      _selectedDate = DateTime(
+                        _selectedDate.year,
+                        _selectedDate.month + 1,
                       );
                     });
                   }
@@ -109,16 +181,76 @@ class _StatisticsPageState extends State<StatisticsPage> {
     );
   }
 
-  Future<void> _selectMonth() async {
+  Widget _buildMonthHeader() {
+    // 此方法不再使用,已删除
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildYearSelector() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left, color: Colors.white),
+            onPressed: _selectedDate.year > 2020
+                ? () {
+                    setState(() {
+                      _selectedDate = DateTime(_selectedDate.year - 1, 1);
+                    });
+                  }
+                : null,
+          ),
+          Expanded(
+            child: Text(
+              '${_selectedDate.year}年',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, color: Colors.white),
+            onPressed: _selectedDate.year < DateTime.now().year
+                ? () {
+                    setState(() {
+                      _selectedDate = DateTime(_selectedDate.year + 1, 1);
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _selectedMonth,
+      initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
-      initialDatePickerMode: DatePickerMode.year,
+      initialDatePickerMode: _viewMode == ViewMode.monthly
+          ? DatePickerMode.year
+          : DatePickerMode.year,
     );
     if (picked != null) {
-      setState(() => _selectedMonth = picked);
+      setState(() {
+        if (_viewMode == ViewMode.monthly) {
+          _selectedDate = picked!;
+        } else {
+          _selectedDate = DateTime(picked!.year, 1, 1);
+        }
+      });
     }
   }
 
@@ -227,13 +359,25 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Future<Map<String, double>> _getCategoryStats() async {
     final provider = context.read<TransactionProvider>();
-    final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
-    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
-    return await provider.getCategoryStats(
-      startDate: startDate,
-      endDate: endDate,
-      type: 'expense',
-    );
+
+    if (_viewMode == ViewMode.monthly) {
+      final startDate = DateTime(_selectedDate.year, _selectedDate.month, 1);
+      final endDate = DateTime(_selectedDate.year, _selectedDate.month + 1, 0);
+      return await provider.getCategoryStats(
+        startDate: startDate,
+        endDate: endDate,
+        type: 'expense',
+      );
+    } else {
+      // 年度视图：统计全年分类支出
+      final startDate = DateTime(_selectedDate.year, 1, 1);
+      final endDate = DateTime(_selectedDate.year + 1, 1, 0);
+      return await provider.getCategoryStats(
+        startDate: startDate,
+        endDate: endDate,
+        type: 'expense',
+      );
+    }
   }
 
   Widget _buildBarChart() {
@@ -253,8 +397,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '近6个月收支对比',
+          Text(
+            _viewMode == ViewMode.monthly ? '近6个月收支对比' : '年度12个月收支对比',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -311,7 +455,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
                           getTitlesWidget: (value, meta) {
                             if (value.toInt() >= data.length) return const Text('');
                             return Text(
-                              '${data[value.toInt()]['month']}月',
+                              '${data[value.toInt()]['month']}',
                               style: const TextStyle(fontSize: 10),
                             );
                           },
@@ -352,7 +496,14 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Future<List<Map<String, dynamic>>> _getMonthlyStats() async {
     final provider = context.read<TransactionProvider>();
-    return await provider.getMonthlyStats(6);
+
+    if (_viewMode == ViewMode.monthly) {
+      // 月度视图：显示近6个月
+      return await provider.getMonthlyStats(6);
+    } else {
+      // 年度视图：显示1-12月
+      return await provider.getYearlyStats(_selectedDate.year);
+    }
   }
 
   Widget _buildLineChart() {
@@ -372,8 +523,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '本月每日支出趋势',
+          Text(
+            _viewMode == ViewMode.monthly ? '本月每日支出趋势' : '年度月度支出趋势',
             style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
@@ -387,20 +538,32 @@ class _StatisticsPageState extends State<StatisticsPage> {
                 }
 
                 final data = snapshot.data!;
-                final daysInMonth = DateTime(
-                  _selectedMonth.year,
-                  _selectedMonth.month + 1,
-                  0,
-                ).day;
-
                 final spots = <FlSpot>[];
-                for (int i = 1; i <= daysInMonth; i++) {
-                  final date =
-                      '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}-${i.toString().padLeft(2, '0')}';
-                  spots.add(FlSpot(
-                    i.toDouble(),
-                    data[date] ?? 0,
-                  ));
+
+                if (_viewMode == ViewMode.monthly) {
+                  // 月度视图：显示当月每天
+                  final daysInMonth = DateTime(
+                    _selectedDate.year,
+                    _selectedDate.month + 1,
+                    0,
+                  ).day;
+                  for (int i = 1; i <= daysInMonth; i++) {
+                    final date =
+                        '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${i.toString().padLeft(2, '0')}';
+                    spots.add(FlSpot(
+                      i.toDouble(),
+                      data[date] ?? 0,
+                    ));
+                  }
+                } else {
+                  // 年度视图：显示12个月的支出
+                  for (int i = 1; i <= 12; i++) {
+                    final monthKey = '$i月';
+                    spots.add(FlSpot(
+                      i.toDouble(),
+                      data[monthKey] ?? 0,
+                    ));
+                  }
                 }
 
                 return LineChart(
@@ -423,12 +586,19 @@ class _StatisticsPageState extends State<StatisticsPage> {
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          interval: 7,
+                          interval: _viewMode == ViewMode.monthly ? 7 : 2,
                           getTitlesWidget: (value, meta) {
-                            return Text(
-                              '${value.toInt()}日',
-                              style: const TextStyle(fontSize: 10),
-                            );
+                            if (_viewMode == ViewMode.monthly) {
+                              return Text(
+                                '${value.toInt()}日',
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            } else {
+                              return Text(
+                                '${value.toInt()}月',
+                                style: const TextStyle(fontSize: 10),
+                              );
+                            }
                           },
                         ),
                       ),
@@ -469,10 +639,17 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Future<Map<String, double>> _getDailyTrend() async {
     final provider = context.read<TransactionProvider>();
-    return await provider.getDailyTrend(
-      year: _selectedMonth.year,
-      month: _selectedMonth.month,
-    );
+
+    if (_viewMode == ViewMode.monthly) {
+      // 月度视图：获取当月每日趋势
+      return await provider.getDailyTrend(
+        year: _selectedDate.year,
+        month: _selectedDate.month,
+      );
+    } else {
+      // 年度视图：获取年度月度趋势（12个数据点）
+      return await provider.getYearlyMonthlyTrend(_selectedDate.year);
+    }
   }
 
   String _getCategoryName(String categoryId) {

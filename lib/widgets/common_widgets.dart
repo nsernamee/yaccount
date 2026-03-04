@@ -1,6 +1,31 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
 
+/// 统一高度的一行统计卡片
+class StatCardRow extends StatelessWidget {
+  final Widget leftCard;
+  final Widget rightCard;
+
+  const StatCardRow({
+    required this.leftCard,
+    required this.rightCard,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: leftCard),
+          const SizedBox(width: 12),
+          Expanded(child: rightCard),
+        ],
+      ),
+    );
+  }
+}
+
 /// 统计卡片组件
 class StatCard extends StatelessWidget {
   final String title;
@@ -16,30 +41,44 @@ class StatCard extends StatelessWidget {
     required this.icon,
   });
 
+  // 根据金额长度动态计算字体大小
+  double _getAmountFontSize() {
+    final amountStr = '¥${amount.toStringAsFixed(2)}';
+
+    if (amountStr.length <= 8) return 24;      // ¥99999.99
+    if (amountStr.length <= 10) return 20;     // ¥9999999.99
+    if (amountStr.length <= 12) return 16;     // ¥999999999.99
+    return 14;                                // 更长的情况
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(
+        minHeight: 100,  // 最小高度,确保足够空间
+      ),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.white,  // 统一纯白色背景
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,  // 内容垂直居中
         children: [
           Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: Colors.grey[100],
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -59,9 +98,11 @@ class StatCard extends StatelessWidget {
             '¥${amount.toStringAsFixed(2)}',
             style: TextStyle(
               color: color,
-              fontSize: 24,
+              fontSize: _getAmountFontSize(),  // 动态字体大小
               fontWeight: FontWeight.bold,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,  // 防止换行
           ),
         ],
       ),

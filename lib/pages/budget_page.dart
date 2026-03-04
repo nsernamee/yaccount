@@ -5,6 +5,7 @@ import '../providers/budget_provider.dart';
 import '../utils/constants.dart';
 import '../utils/date_utils.dart';
 import '../widgets/common_widgets.dart';
+import '../models/budget_model.dart';
 
 /// 预算管理页面
 class BudgetPage extends StatefulWidget {
@@ -261,9 +262,30 @@ class _BudgetPageState extends State<BudgetPage> {
                                 style: const TextStyle(fontWeight: FontWeight.w500),
                               ),
                             ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Color(provider.getUsageColor(rate)).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                '${rate.toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  color: Color(provider.getUsageColor(rate)),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
                             Text(
                               '¥${budget.amount.toStringAsFixed(2)}',
                               style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              onPressed: () => _showEditCategoryBudgetDialog(context, budget),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline, size: 20),
@@ -315,6 +337,16 @@ class _BudgetPageState extends State<BudgetPage> {
       builder: (context) => _EditTotalBudgetDialog(
         month: _selectedMonth,
         currentBudget: currentBudget,
+      ),
+    );
+  }
+
+  void _showEditCategoryBudgetDialog(BuildContext context, BudgetModel budget) {
+    showDialog(
+      context: context,
+      builder: (context) => _EditCategoryBudgetDialog(
+        month: _selectedMonth,
+        budget: budget,
       ),
     );
   }
@@ -518,4 +550,94 @@ class _EditTotalBudgetDialogState extends State<_EditTotalBudgetDialog> {
     if (mounted) Navigator.pop(context);
   }
 }
+
+class _EditCategoryBudgetDialog extends StatefulWidget {
+  final int month;
+  final BudgetModel budget;
+
+  const _EditCategoryBudgetDialog({required this.month, required this.budget});
+
+  @override
+  State<_EditCategoryBudgetDialog> createState() => _EditCategoryBudgetDialogState();
+}
+
+class _EditCategoryBudgetDialogState extends State<_EditCategoryBudgetDialog> {
+  late final TextEditingController _amountController;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(
+      text: widget.budget.amount.toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  String _getCategoryName(String categoryId) {
+    final categories = {
+      'food': '餐饮',
+      'transport': '交通',
+      'shopping': '购物',
+      'entertainment': '娱乐',
+      'medical': '医疗',
+      'education': '教育',
+      'housing': '住房',
+    };
+    return categories[categoryId] ?? categoryId;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('编辑 ${_getCategoryName(widget.budget.category)} 预算'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: '金额',
+              prefixText: '¥ ',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        ElevatedButton(
+          onPressed: _saveBudget,
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveBudget() async {
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入有效金额')),
+      );
+      return;
+    }
+
+    await context.read<BudgetProvider>().setCategoryBudget(
+          widget.budget.category,
+          amount,
+          widget.month,
+        );
+
+    if (mounted) Navigator.pop(context);
+  }
+}
+
 

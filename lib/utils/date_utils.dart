@@ -2,12 +2,12 @@ import 'package:intl/intl.dart';
 
 /// 日期工具类
 class AppDateUtils {
-  static final DateFormat _dateFormat = DateFormat('yyyy-MM-dd');
+  static final DateFormat _dateFormat = DateFormat('yyyy年M月d日');
   static final DateFormat _monthFormat = DateFormat('yyyy年MM月');
-  static final DateFormat _dayFormat = DateFormat('MM/dd');
+  static final DateFormat _dayFormat = DateFormat('M月d日');
   static final DateFormat _chineseDateFormat = DateFormat('MM月dd日');
 
-  /// 格式化日期为 yyyy-MM-dd
+  /// 格式化日期为 yyyy年M月d日
   static String formatDate(DateTime date) {
     return _dateFormat.format(date);
   }
@@ -17,7 +17,7 @@ class AppDateUtils {
     return _monthFormat.format(date);
   }
 
-  /// 格式化日期为 MM/dd
+  /// 格式化日期为 M月d日
   static String formatDay(DateTime date) {
     return _dayFormat.format(date);
   }

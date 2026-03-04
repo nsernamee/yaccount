@@ -89,8 +89,15 @@ class _HomePageState extends State<HomePage> {
 }
 
 /// 首页内容
-class _HomeContent extends StatelessWidget {
+class _HomeContent extends StatefulWidget {
   const _HomeContent();
+
+  @override
+  State<_HomeContent> createState() => _HomeContentState();
+}
+
+class _HomeContentState extends State<_HomeContent> {
+  bool _isStatisticsExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -109,10 +116,10 @@ class _HomeContent extends StatelessWidget {
               child: _buildQuickActions(context),
             ),
             SliverToBoxAdapter(
-              child: _buildStatistics(context),
+              child: _buildBudgetProgress(context),
             ),
             SliverToBoxAdapter(
-              child: _buildBudgetProgress(context),
+              child: _buildStatistics(context),
             ),
             SliverToBoxAdapter(
               child: const SizedBox(height: 20),
@@ -192,20 +199,48 @@ class _HomeContent extends StatelessWidget {
           const SizedBox(height: 20),
           const Text(
             '本月结余',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: Colors.white70, fontSize: 18),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Consumer<TransactionProvider>(
             builder: (context, provider, _) {
               final balance = (provider.monthStats['income'] ?? 0) -
                   (provider.monthStats['expense'] ?? 0);
-              return Text(
-                '¥${balance.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                ),
+              final isNegative = balance < 0;
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (isNegative)
+                    Text(
+                      '-',
+                      style: TextStyle(
+                        color: isNegative ? Colors.red[400] : Colors.white,
+                        fontSize: 42,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  Text(
+                    balance.abs().toStringAsFixed(2),
+                    style: TextStyle(
+                      color: isNegative ? Colors.red[400] : Colors.white,
+                      fontSize: 42,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4, right: 4),
+                    child: Text(
+                      '¥',
+                      style: TextStyle(
+                        color: isNegative ? Colors.red[400] : Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               );
             },
           ),
@@ -220,63 +255,105 @@ class _HomeContent extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '收支概览',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppConstants.textPrimary,
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isStatisticsExpanded = !_isStatisticsExpanded;
+              });
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '收支概览',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppConstants.textPrimary,
+                  ),
+                ),
+                Icon(
+                  _isStatisticsExpanded ? Icons.expand_less : Icons.expand_more,
+                  color: AppConstants.textSecondary,
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
           Consumer<TransactionProvider>(
             builder: (context, provider, _) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      title: '今日支出',
-                      amount: provider.todayStats['expense'] ?? 0,
-                      color: AppConstants.expenseColor,
-                      icon: Icons.arrow_downward,
+              return AnimatedSize(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                  child: Column(
+                  children: [
+                    // 今日统计
+                    StatCardRow(
+                      leftCard: StatCard(
+                        title: '今日支出',
+                        amount: provider.todayStats['expense'] ?? 0,
+                        color: AppConstants.expenseColor,
+                        icon: Icons.arrow_downward,
+                      ),
+                      rightCard: StatCard(
+                        title: '今日收入',
+                        amount: provider.todayStats['income'] ?? 0,
+                        color: AppConstants.incomeColor,
+                        icon: Icons.arrow_upward,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      title: '今日收入',
-                      amount: provider.todayStats['income'] ?? 0,
-                      color: AppConstants.incomeColor,
-                      icon: Icons.arrow_upward,
+                    const SizedBox(height: 12),
+                    // 本周统计
+                    StatCardRow(
+                      leftCard: StatCard(
+                        title: '本周支出',
+                        amount: provider.weekStats['expense'] ?? 0,
+                        color: AppConstants.expenseColor,
+                        icon: Icons.date_range,
+                      ),
+                      rightCard: StatCard(
+                        title: '本周收入',
+                        amount: provider.weekStats['income'] ?? 0,
+                        color: AppConstants.incomeColor,
+                        icon: Icons.trending_up,
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 12),
-          Consumer<TransactionProvider>(
-            builder: (context, provider, _) {
-              return Row(
-                children: [
-                  Expanded(
-                    child: StatCard(
-                      title: '本周支出',
-                      amount: provider.weekStats['expense'] ?? 0,
-                      color: AppConstants.expenseColor,
-                      icon: Icons.date_range,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: StatCard(
-                      title: '本月支出',
-                      amount: provider.monthStats['expense'] ?? 0,
-                      color: AppConstants.expenseColor,
-                      icon: Icons.calendar_month,
-                    ),
-                  ),
-                ],
+                    if (_isStatisticsExpanded) ...[
+                      const SizedBox(height: 12),
+                      // 本月统计
+                      StatCardRow(
+                        leftCard: StatCard(
+                          title: '本月支出',
+                          amount: provider.monthStats['expense'] ?? 0,
+                          color: AppConstants.expenseColor,
+                          icon: Icons.calendar_month,
+                        ),
+                        rightCard: StatCard(
+                          title: '本月收入',
+                          amount: provider.monthStats['income'] ?? 0,
+                          color: AppConstants.incomeColor,
+                          icon: Icons.account_balance_wallet,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      // 本年统计
+                      StatCardRow(
+                        leftCard: StatCard(
+                          title: '本年支出',
+                          amount: provider.yearStats['expense'] ?? 0,
+                          color: AppConstants.expenseColor,
+                          icon: Icons.event,
+                        ),
+                        rightCard: StatCard(
+                          title: '本年收入',
+                          amount: provider.yearStats['income'] ?? 0,
+                          color: AppConstants.incomeColor,
+                          icon: Icons.trending_up,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
               );
             },
           ),
@@ -364,7 +441,7 @@ class _HomeContent extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            '快捷操作',
+            '快速记账',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,

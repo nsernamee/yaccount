@@ -19,6 +19,7 @@ class TransactionProvider extends ChangeNotifier {
   Map<String, double> _todayStats = {};
   Map<String, double> _weekStats = {};
   Map<String, double> _monthStats = {};
+  Map<String, double> _yearStats = {};
 
   List<TransactionModel> get transactions => _transactions;
   bool get isLoading => _isLoading;
@@ -26,6 +27,7 @@ class TransactionProvider extends ChangeNotifier {
   Map<String, double> get todayStats => _todayStats;
   Map<String, double> get weekStats => _weekStats;
   Map<String, double> get monthStats => _monthStats;
+  Map<String, double> get yearStats => _yearStats;
 
   /// 初始化并加载数据
   Future<void> initialize() async {
@@ -115,6 +117,9 @@ class TransactionProvider extends ChangeNotifier {
       endDate: monthEnd,
     );
 
+    // 本年统计
+    _yearStats = await _db.getYearStatistics();
+
     notifyListeners();
   }
 
@@ -187,5 +192,15 @@ class TransactionProvider extends ChangeNotifier {
     required int month,
   }) async {
     return await _db.getDailyExpenseTrend(year: year, month: month);
+  }
+
+  /// 获取年度统计（柱状图用）
+  Future<List<Map<String, dynamic>>> getYearlyStats(int year) async {
+    return await _db.getYearlyStatistics(year);
+  }
+
+  /// 获取年度月度趋势（折线图用）
+  Future<Map<String, double>> getYearlyMonthlyTrend(int year) async {
+    return await _db.getYearlyMonthlyTrend(year);
   }
 }

@@ -335,6 +335,14 @@ class DatabaseHelper {
     return results;
   }
 
+  /// 获取年度统计数据
+  Future<Map<String, double>> getYearStatistics() async {
+    final now = DateTime.now();
+    final start = DateTime(now.year, 1, 1);
+    final end = DateTime(now.year + 1, 1, 0);
+    return await getStatistics(startDate: start, endDate: end);
+  }
+
   /// 获取当月每日支出趋势（用于折线图）
   Future<Map<String, double>> getDailyExpenseTrend({
     required int year,
@@ -360,6 +368,59 @@ class DatabaseHelper {
       final date = row['date'] as String;
       final total = (row['total'] as num?)?.toDouble() ?? 0;
       trend[date] = total;
+    }
+
+    return trend;
+  }
+
+  /// 获取年度统计（1-12月）
+  Future<List<Map<String, dynamic>>> getYearlyStatistics(int year) async {
+    final db = await database;
+    final results = <Map<String, dynamic>>[];
+
+    for (int month = 1; month <= 12; month++) {
+      final start = DateTime(year, month, 1);
+      final end = DateTime(year, month + 1, 0);
+
+      final stats = await getStatistics(
+        startDate: start,
+        endDate: end,
+      );
+
+      results.add({
+        'month': '$month月',
+        'year': year,
+        'monthNum': month,
+        'income': stats['income'] ?? 0,
+        'expense': stats['expense'] ?? 0,
+      });
+    }
+
+    return results;
+  }
+
+  /// 获取年度月度趋势（用于年度折线图）
+  Future<Map<String, double>> getYearlyMonthlyTrend(int year) async {
+    final db = await database;
+    final start = DateTime(year, 1, 1);
+    final end = DateTime(year + 1, 1, 0);
+
+    final results = await db.rawQuery('''
+      SELECT strftime('%m', date) as month, SUM(amount) as total
+      FROM transactions
+      WHERE date >= ? AND date <= ? AND type = 'expense'
+      GROUP BY month
+      ORDER BY month
+    ''', [
+      start.toIso8601String().split('T')[0],
+      end.toIso8601String().split('T')[0],
+    ]);
+
+    final trend = <String, double>{};
+    for (final row in results) {
+      final month = int.parse(row['month'] as String);
+      final total = (row['total'] as num?)?.toDouble() ?? 0;
+      trend['${month}月'] = total;
     }
 
     return trend;
