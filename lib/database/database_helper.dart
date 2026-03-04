@@ -204,6 +204,7 @@ class DatabaseHelper {
       where.add('type = ?');
       whereArgs.add(type);
     }
+    print('数据库查询: where=${where.isNotEmpty ? where.join(' AND ') : '无筛选条件'}, whereArgs=$whereArgs');
     if (startDate != null) {
       where.add('date >= ?');
       whereArgs.add(startDate.toIso8601String().split('T')[0]);

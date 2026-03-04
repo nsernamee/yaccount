@@ -18,14 +18,17 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage> {
   final ScrollController _scrollController = ScrollController();
-  String? _filterType;
+  String _filterType = 'all'; // 使用 'all' 而不是 null
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TransactionProvider>().loadTransactions(refresh: true);
+      context.read<TransactionProvider>().loadTransactions(
+        refresh: true,
+        filterType: _filterType,
+      );
     });
   }
 
@@ -52,14 +55,20 @@ class _HistoryPageState extends State<HistoryPage> {
         foregroundColor: AppConstants.textPrimary,
         elevation: 0,
         actions: [
-          PopupMenuButton<String?>(
+          PopupMenuButton<String>(
+            key: ValueKey(_filterType), // 添加 key 强制重建
             icon: const Icon(Icons.filter_list),
             onSelected: (value) {
+              print('筛选选择: $value');
               setState(() => _filterType = value);
-              context.read<TransactionProvider>().loadTransactions(refresh: true);
+              print('filterType 设置为: $_filterType');
+              context.read<TransactionProvider>().loadTransactions(
+                refresh: true,
+                filterType: _filterType,
+              );
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: null, child: Text('全部')),
+              const PopupMenuItem(value: 'all', child: Text('全部')),
               const PopupMenuItem(value: 'expense', child: Text('仅支出')),
               const PopupMenuItem(value: 'income', child: Text('仅收入')),
             ],
@@ -76,7 +85,10 @@ class _HistoryPageState extends State<HistoryPage> {
           }
 
           return RefreshIndicator(
-            onRefresh: () => provider.loadTransactions(refresh: true),
+            onRefresh: () => provider.loadTransactions(
+              refresh: true,
+              filterType: _filterType,
+            ),
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(16),
@@ -434,7 +446,7 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
         ),
         child: _isLoading
             ? const CircularProgressIndicator(color: Colors.white)
-            : const Text('保存修改', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            : const Text('保存修改', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
       ),
     );
   }

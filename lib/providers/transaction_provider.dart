@@ -13,6 +13,7 @@ class TransactionProvider extends ChangeNotifier {
   bool _hasMore = true;
   int _currentPage = 0;
   static const int _pageSize = 20;
+  String? _currentFilterType;
 
   // 统计数据缓存
   Map<String, double> _todayStats = {};
@@ -33,8 +34,16 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   /// 加载交易记录（分页）
-  Future<void> loadTransactions({bool refresh = false}) async {
+  Future<void> loadTransactions({bool refresh = false, String? filterType}) async {
     if (_isLoading) return;
+
+    // 如果筛选类型改变，需要重新加载
+    if (filterType != _currentFilterType) {
+      refresh = true;
+    }
+    _currentFilterType = filterType;
+
+    print('loadTransactions 被调用: refresh=$refresh, filterType=$filterType, _currentFilterType=$_currentFilterType');
 
     if (refresh) {
       _currentPage = 0;
@@ -48,10 +57,13 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      print('查询数据库: page=$_currentPage, pageSize=$_pageSize, type=$filterType');
       final newTransactions = await _db.getTransactions(
         page: _currentPage,
         pageSize: _pageSize,
+        type: filterType == 'all' ? null : filterType, // 'all' 转换为 null 表示无筛选
       );
+      print('查询结果数量: ${newTransactions.length}');
 
       if (newTransactions.length < _pageSize) {
         _hasMore = false;
@@ -68,12 +80,12 @@ class TransactionProvider extends ChangeNotifier {
   /// 加载更多（分页加载）
   Future<void> loadMore() async {
     if (_isLoading || !_hasMore) return;
-    await loadTransactions();
+    await loadTransactions(filterType: _currentFilterType == 'all' ? null : _currentFilterType);
   }
 
   /// 刷新数据
   Future<void> refresh() async {
-    await loadTransactions(refresh: true);
+    await loadTransactions(refresh: true, filterType: _currentFilterType == 'all' ? null : _currentFilterType);
     await loadStatistics();
   }
 

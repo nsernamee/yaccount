@@ -49,7 +49,7 @@ class _BudgetPageState extends State<BudgetPage> {
                 const SizedBox(height: 20),
                 _buildTotalBudgetCard(spent, totalBudget?.amount ?? 0, budgetProvider),
                 const SizedBox(height: 20),
-                _buildCategoryBudgets(spent, budgetProvider),
+                _buildCategoryBudgets(spent, budgetProvider, transactionProvider),
               ],
             ),
           );
@@ -158,25 +158,32 @@ class _BudgetPageState extends State<BudgetPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const Spacer(),
-              if (budget > 0)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    '${rate.toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-            ],
-          ),
+              const Spacer(          ),
+          const Spacer(),
           if (budget > 0) ...[
+            IconButton(
+              icon: const Icon(Icons.edit, color: Colors.white),
+              onPressed: () => _showEditTotalBudgetDialog(context, budget),
+              tooltip: '编辑总预算',
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${rate.toStringAsFixed(1)}%',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      if (budget > 0) ...[
             const SizedBox(height: 16),
             BudgetProgressBar(spent: spent, budget: budget),
             const SizedBox(height: 8),
@@ -190,8 +197,13 @@ class _BudgetPageState extends State<BudgetPage> {
     );
   }
 
-  Widget _buildCategoryBudgets(double totalSpent, BudgetProvider provider) {
+  Widget _buildCategoryBudgets(double totalSpent, BudgetProvider provider, TransactionProvider transactionProvider) {
     final categoryBudgets = provider.budgets.where((b) => b.category != 'total');
+
+    // 获取当前月份的开始和结束日期
+    final now = AppDateUtils.fromMonthInt(_selectedMonth);
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month + 1, 0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,45 +228,58 @@ class _BudgetPageState extends State<BudgetPage> {
             ),
           )
         else
-          ...categoryBudgets.map((budget) {
-            // 计算该分类已花费
-            final spent = 0.0; // 需要从TransactionProvider获取
-            final rate = provider.calculateUsageRate(spent, budget.amount);
+          FutureBuilder<Map<String, double>>(
+            future: transactionProvider.getCategoryStats(
+              startDate: monthStart,
+              endDate: monthEnd,
+              type: 'expense',
+            ),
+            builder: (context, snapshot) {
+              final categoryStats = snapshot.data ?? {};
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _getCategoryName(budget.category),
-                          style: const TextStyle(fontWeight: FontWeight.w500),
+              return Column(
+                children: categoryBudgets.map((budget) {
+                  // 计算该分类已花费
+                  final spent = categoryStats[budget.category] ?? 0.0;
+                  final rate = provider.calculateUsageRate(spent, budget.amount);
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                _getCategoryName(budget.category),
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                            Text(
+                              '¥${budget.amount.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, size: 20),
+                              onPressed: () => _deleteBudget(budget.id),
+                            ),
+                          ],
                         ),
-                      ),
-                      Text(
-                        '¥${budget.amount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 20),
-                        onPressed: () => _deleteBudget(budget.id),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  BudgetProgressBar(spent: spent, budget: budget.amount),
-                ],
-              ),
-            );
-          }),
+                        const SizedBox(height: 8),
+                        BudgetProgressBar(spent: spent, budget: budget.amount),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              );
+            },
+          ),
       ],
     );
   }
@@ -280,6 +305,16 @@ class _BudgetPageState extends State<BudgetPage> {
       builder: (context) => _AddBudgetDialog(
         month: _selectedMonth,
         isTotal: isTotal,
+      ),
+    );
+  }
+
+  void _showEditTotalBudgetDialog(BuildContext context, double currentBudget) {
+    showDialog(
+      context: context,
+      builder: (context) => _EditTotalBudgetDialog(
+        month: _selectedMonth,
+        currentBudget: currentBudget,
       ),
     );
   }
@@ -411,3 +446,76 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
     if (mounted) Navigator.pop(context);
   }
 }
+
+class _EditTotalBudgetDialog extends StatefulWidget {
+  final int month;
+  final double currentBudget;
+
+  const _EditTotalBudgetDialog({required this.month, required this.currentBudget});
+
+  @override
+  State<_EditTotalBudgetDialog> createState() => _EditTotalBudgetDialogState();
+}
+
+class _EditTotalBudgetDialogState extends State<_EditTotalBudgetDialog> {
+  late final TextEditingController _amountController;
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(
+      text: widget.currentBudget.toStringAsFixed(2),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('编辑总预算'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _amountController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: '金额',
+              prefixText: '¥ ',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('取消'),
+        ),
+        ElevatedButton(
+          onPressed: _saveBudget,
+          child: const Text('保存'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveBudget() async {
+    final amount = double.tryParse(_amountController.text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入有效金额')),
+      );
+      return;
+    }
+
+    await context.read<BudgetProvider>().setTotalBudget(amount, widget.month);
+
+    if (mounted) Navigator.pop(context);
+  }
+}
+

@@ -25,21 +25,7 @@ class SettingsPage extends StatelessWidget {
               _buildSection(
                 title: '安全设置',
                 children: [
-                  _SettingsTile(
-                    icon: Icons.lock,
-                    title: '数据库加密',
-                    subtitle: appProvider.isEncrypted ? '已启用' : '未启用',
-                    trailing: Switch(
-                      value: appProvider.isEncrypted,
-                      onChanged: (value) {
-                        if (value) {
-                          _showSetPasswordDialog(context);
-                        } else {
-                          _showUnsetPasswordDialog(context);
-                        }
-                      },
-                    ),
-                  ),
+                  _buildEncryptionTile(context, appProvider),
                 ],
               ),
               const SizedBox(height: 16),
@@ -108,6 +94,73 @@ class SettingsPage extends StatelessWidget {
           ...children,
         ],
       ),
+    );
+  }
+
+  Widget _buildEncryptionTile(BuildContext context, AppProvider appProvider) {
+    return Column(
+      children: [
+        ListTile(
+          leading: Icon(Icons.lock, color: AppConstants.primaryColor),
+          title: const Text('数据库加密'),
+          subtitle: Text(appProvider.isEncrypted ? '已启用' : '未启用'),
+          trailing: Switch(
+            value: appProvider.isEncrypted,
+            onChanged: (value) {
+              if (value) {
+                _showSetPasswordDialog(context);
+              } else {
+                _showUnsetPasswordDialog(context);
+              }
+            },
+          ),
+        ),
+        // 加密功能说明
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppConstants.primaryColor.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppConstants.primaryColor.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: AppConstants.primaryColor),
+                  const SizedBox(width: 6),
+                  const Text(
+                    '加密说明',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                '• 使用 AES-256 加密算法保护您的数据',
+                style: TextStyle(fontSize: 12, color: AppConstants.textSecondary),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '• 密码用于生成加密密钥，请妥善保管',
+                style: TextStyle(fontSize: 12, color: AppConstants.textSecondary),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '• 忘记密码将无法恢复数据',
+                style: TextStyle(fontSize: 12, color: Colors.red),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                '• 加密后数据仍然完全本地存储',
+                style: TextStyle(fontSize: 12, color: AppConstants.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
