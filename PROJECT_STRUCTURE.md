@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-**YAccount** 是一款本地记账应用,使用 Flutter 3.x 开发,数据存储在手机本地 SQLite 数据库中,支持 Android/iOS 平台。
+**YAccount** 是一款本地记账应用，使用 Flutter 开发，数据存储在手机本地 SQLite 数据库中，支持 Android/iOS 平台。
 
 ---
 
@@ -34,7 +34,7 @@ yaccount/
 │   │   ├── common_widgets.dart        # 通用组件
 │   │   └── category_selector.dart     # 分类选择器
 │   ├── utils/                         # 工具层
-│   │   ├── constants.dart             # 常量定义
+│   │   ├── constants.dart              # 常量定义
 │   │   └── date_utils.dart            # 日期工具
 │   └── services/                      # 服务层(预留)
 ├── android/                           # Android 平台配置
@@ -73,33 +73,40 @@ yaccount/
 - 创建/升级数据库表结构
 - 提供 CRUD 操作接口
 - 支持数据库加密(可选)
+- 复杂的聚合查询统计
 
 **数据库表结构**:
 
 ```sql
 -- 交易记录表 (transactions)
 CREATE TABLE transactions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  id TEXT PRIMARY KEY,
+  amount REAL NOT NULL,
   type TEXT NOT NULL,           -- 'expense' 或 'income'
-  amount REAL NOT NULL,         -- 金额
-  category TEXT NOT NULL,       -- 分类
+  category TEXT NOT NULL,       -- 分类ID
   note TEXT,                    -- 备注
-  date TEXT NOT NULL            -- 日期 (YYYY-MM-DD)
+  date TEXT NOT NULL,           -- 日期 (YYYY-MM-DD)
+  created_at TEXT NOT NULL      -- 创建时间
 );
+
+-- 索引优化查询性能
 CREATE INDEX idx_transaction_date ON transactions(date);
+CREATE INDEX idx_transaction_type ON transactions(type);
+CREATE INDEX idx_transaction_category ON transactions(category);
 
 -- 预算表 (budgets)
 CREATE TABLE budgets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  category TEXT NOT NULL,       -- 分类 (总预算为 'total')
+  id TEXT PRIMARY KEY,
+  category TEXT NOT NULL,       -- 分类ID (总预算为 'total')
   amount REAL NOT NULL,         -- 预算金额
-  month TEXT NOT NULL           -- 月份 (YYYY-MM)
+  month INTEGER NOT NULL,       -- 月份 (YYYYMM 格式)
+  created_at TEXT NOT NULL,     -- 创建时间
+  UNIQUE(category, month)       -- 唯一约束
 );
-CREATE UNIQUE INDEX idx_budget_month_category ON budgets(month, category);
 ```
 
 **关键方法**:
-- `get database`: 获取数据库实例(单例)
+- `database`: 获取数据库实例(单例)
 - `_initDatabase()`: 初始化数据库
 - `_onCreate()`: 创建表结构
 - `_onUpgrade()`: 升级数据库版本
@@ -107,9 +114,14 @@ CREATE UNIQUE INDEX idx_budget_month_category ON budgets(month, category);
 - `updateTransaction()`: 更新交易记录
 - `deleteTransaction()`: 删除交易记录
 - `getTransactions()`: 查询交易记录(支持分页)
-- `getStatistics()`: 获取统计数据
-- `saveBudget()`: 保存预算
-- `getBudget()`: 查询预算
+- `getStatistics()`: 获取指定日期范围统计
+- `getYearStatistics()`: 获取年度统计
+- `getCategoryStatistics()`: 获取分类统计(饼图用)
+- `getMonthlyStatistics()`: 获取月度统计(柱状图用)
+- `getDailyExpenseTrend()`: 获取每日支出趋势(折线图用)
+- `setTotalBudget()`: 设置总预算
+- `setCategoryBudget()`: 设置分类预算
+- `getBudgets()`: 获取预算列表
 
 ---
 
@@ -121,29 +133,39 @@ CREATE UNIQUE INDEX idx_budget_month_category ON budgets(month, category);
 
 ```dart
 class TransactionModel {
-  final int? id;
-  final String type;        // 'expense' 或 'income'
-  final double amount;
-  final String category;
-  final String? note;
-  final String date;
+  final String id;              // UUID 唯一标识
+  final double amount;          // 金额
+  final String type;            // 'expense' 或 'income'
+  final String category;        // 分类ID
+  final String? note;           // 备注
+  final DateTime date;          // 交易日期
+  final DateTime createdAt;     // 创建时间
 
-  // 转换方法
+  // 序列化方法
   Map<String, dynamic> toMap()
   factory TransactionModel.fromMap(Map<String, dynamic> map)
+  // 复制方法
+  TransactionModel copyWith(...)
 }
 ```
 
 #### `category_model.dart`
 
-**用途**: 定义分类数据结构
+**用途**: 定义分类数据结构，包含支出分类和收入分类
 
 ```dart
 class CategoryModel {
-  final String name;
-  final String icon;
-  final Color color;
+  final String id;              // 分类ID
+  final String name;             // 分类名称
+  final String icon;            // 图标名称
+  final int colorValue;         // 颜色值
+
+  // 预设分类
+  static List<CategoryModel> categories
 }
+
+// 支出分类: 餐饮、交通、购物、娱乐、医疗、教育、住房
+// 收入分类: 工资、投资、其他
 ```
 
 #### `budget_model.dart`
@@ -152,10 +174,14 @@ class CategoryModel {
 
 ```dart
 class BudgetModel {
-  final int? id;
-  final String category;
-  final double amount;
-  final String month;
+  final String id;              // UUID 唯一标识
+  final String category;        // 分类ID ('total' 表示总预算)
+  final double amount;          // 预算金额
+  final int month;              // 月份 (YYYYMM 格式)
+  final DateTime createdAt;     // 创建时间
+
+  Map<String, dynamic> toMap()
+  factory BudgetModel.fromMap(Map<String, dynamic> map)
 }
 ```
 
@@ -183,29 +209,33 @@ class BudgetModel {
 
 #### `transaction_provider.dart`
 
-**职责**: 管理交易数据
+**职责**: 管理交易数据和处理统计计算
 
 **状态**:
-- `transactions`: 交易列表
+- `transactions`: 交易列表(分页)
 - `isLoading`: 加载状态
-- `todayIncome`: 今日收入
-- `todayExpense`: 今日支出
-- `todayBalance`: 今日结余
-- `weekIncome`: 本周收入
-- `weekExpense`: 本周支出
-- `weekBalance`: 本周结余
-- `monthIncome`: 本月收入
-- `monthExpense`: 本月支出
-- `monthBalance`: 本月结余
+- `hasMore`: 是否还有更多数据
+- `todayStats`: 今日统计 {income, expense}
+- `weekStats`: 本周统计 {income, expense}
+- `monthStats`: 本月统计 {income, expense}
+- `yearStats`: 本年统计 {income, expense}
 
 **方法**:
-- `loadTransactions()`: 加载交易记录
+- `initialize()`: 初始化并加载数据
+- `loadTransactions()`: 加载交易记录(分页)
+- `loadMore()`: 加载更多(分页)
+- `refresh()`: 刷新数据
 - `loadStatistics()`: 加载统计数据
 - `addTransaction()`: 添加交易
 - `updateTransaction()`: 更新交易
 - `deleteTransaction()`: 删除交易
-- `importTransactions()`: 导入交易
-- `exportTransactions()`: 导出交易
+- `importTransactions()`: 批量导入交易
+- `getAllTransactions()`: 获取所有交易(用于导出)
+- `getCategoryStats()`: 获取分类统计(饼图用)
+- `getMonthlyStats()`: 获取月度统计(柱状图用)
+- `getDailyTrend()`: 获取每日支出趋势(折线图用)
+- `getYearlyStats()`: 获取年度统计
+- `getYearlyMonthlyTrend()`: 获取年度月度趋势
 
 ---
 
@@ -214,15 +244,17 @@ class BudgetModel {
 **职责**: 管理预算数据
 
 **状态**:
-- `budgets`: 预算列表
+- `budgets`: 分类预算列表
 - `totalBudget`: 总预算
-- `totalSpent`: 总支出
+- `currentMonth`: 当前月份
 
 **方法**:
-- `loadBudgets()`: 加载预算
-- `saveBudget()`: 保存预算
+- `loadBudgets()`: 加载指定月份预算
+- `setTotalBudget()`: 设置总预算
+- `setCategoryBudget()`: 设置分类预算
 - `deleteBudget()`: 删除预算
-- `getBudgetUsage()`: 获取预算使用率
+- `calculateUsageRate()`: 计算使用率
+- `getUsageColor()`: 获取使用率颜色
 
 ---
 
@@ -231,15 +263,17 @@ class BudgetModel {
 #### `home_page.dart` - 首页
 
 **功能**:
-- 展示今日/本周/本月收支统计
-- 显示预算进度条(颜色根据使用率变化)
-- 快捷添加交易按钮
-- 快捷访问各功能入口
+- 展示本月结余(收入-支出)，负数显示红色
+- 显示今日/本周/本月收支统计卡片
+- 展示最近交易列表
+- 快捷添加交易按钮(FloatingActionButton)
+- 底部导航栏：首页、统计、预算、设置
 
 **UI组件**:
-- 统计卡片(收入/支出/结余)
-- 预算进度条
-- 最近交易列表
+- `StatCardRow`: 行统计卡片容器
+- `StatCard`: 统计卡片(金额自动缩放字体)
+- `BudgetProgressBar`: 预算进度条
+- `TransactionListItem`: 交易列表项
 
 ---
 
@@ -247,16 +281,16 @@ class BudgetModel {
 
 **功能**:
 - 切换支出/收入类型
-- 输入金额
-- 选择分类
-- 输入备注
-- 修改日期
+- 输入金额(数字键盘)
+- 选择分类(网格布局)
+- 输入备注(可选)
+- 选择日期(默认今天)
 - 保存交易
 
 **UI组件**:
-- 类型切换 Tab
-- 金额输入框
-- 分类选择器
+- 类型切换 Tab (支出/收入)
+- 大数字金额输入框
+- 分类选择器网格
 - 日期选择器
 - 保存按钮
 
@@ -265,29 +299,33 @@ class BudgetModel {
 #### `history_page.dart` - 历史记录
 
 **功能**:
-- 按日期倒序显示交易记录
+- 按日期分组显示交易记录
 - 分页加载(每次20条)
 - 滑动删除交易
 - 编辑交易
+- 筛选功能(全部/支出/收入)
 
 **UI组件**:
-- 列表视图
-- 滑动操作菜单
+- 按日期分组的列表
+- `Slidable` 滑动操作
 - 加载更多指示器
+- 空状态组件
 
 ---
 
 #### `statistics_page.dart` - 统计图表
 
 **功能**:
+- 月份选择器
 - 饼图: 支出分类占比
 - 柱状图: 近6个月收支对比
 - 折线图: 当月每日支出趋势
-- 月份切换
 
 **UI组件**:
-- Tab 切换(饼图/柱状图/折线图)
-- 图表容器
+- TabBar 切换视图
+- `PieChart`: 饼图
+- `BarChart`: 柱状图
+- `LineChart`: 折线图
 - 月份选择器
 
 ---
@@ -295,14 +333,18 @@ class BudgetModel {
 #### `budget_page.dart` - 预算管理
 
 **功能**:
-- 设置月度总预算
-- 设置分类预算
-- 查看预算使用率
-- 预算超支提醒
+- 月份选择器
+- 设置/编辑月度总预算
+- 设置/编辑分类预算
+- 查看预算使用率(百分比显示)
+- 进度条可视化
+- 删除分类预算
 
 **UI组件**:
-- 预算列表
-- 进度条
+- 月份切换器
+- 总预算卡片(渐变色背景)
+- 分类预算卡片列表
+- `BudgetProgressBar`: 进度条
 - 添加/编辑/删除按钮
 
 ---
@@ -314,12 +356,13 @@ class BudgetModel {
 - 导出为 Excel 文件
 - 导入 CSV 文件
 - 导入 Excel 文件
-- 选择导入方式(增量/覆盖)
+- 数据增量/覆盖选项
 
 **UI组件**:
-- 导出按钮
+- 导出按钮组
 - 文件选择器
-- 导入选项
+- 导入选项单选框
+- 进度指示器
 
 ---
 
@@ -327,13 +370,13 @@ class BudgetModel {
 
 **功能**:
 - 设置/修改应用密码
-- 关闭应用密码
-- 查看关于信息
+- 开启/关闭密码保护
 - 清空所有数据
+- 查看关于信息
 
 **UI组件**:
 - 设置项列表
-- 密码输入框
+- 密码输入对话框
 - 确认对话框
 
 ---
@@ -343,16 +386,23 @@ class BudgetModel {
 #### `common_widgets.dart`
 
 **通用组件**:
+- `StatCardRow`: 统一高度的行统计卡片容器
+- `StatCard`: 统计卡片(根据金额长度自动调整字体大小)
 - `BudgetProgressBar`: 预算进度条组件
-- `StatCard`: 统计卡片组件
-- `TransactionItem`: 交易条目组件
+- `EmptyState`: 空状态组件
+- `LoadMoreIndicator`: 加载更多指示器
+
+**实现细节**:
+- `StatCard` 根据金额长度动态计算字体大小(14-20px)
+- `BudgetProgressBar` 根据使用率显示不同颜色(绿/黄/红)
 
 #### `category_selector.dart`
 
 **分类选择器**:
-- 网格布局展示分类
-- 支持分类图标和颜色
-- 选中状态反馈
+- 网格布局展示分类(3列)
+- 显示分类图标和名称
+- 支持选中状态高亮
+- 支出和收入分类分别显示
 
 ---
 
@@ -361,16 +411,36 @@ class BudgetModel {
 #### `constants.dart`
 
 **常量定义**:
-- 应用主题色
-- 分类列表
-- 预设预算
+```dart
+class AppConstants {
+  // 主题色
+  static const Color primaryColor = Color(0xFF6C5CE7);
+  static const Color expenseColor = Color(0xFFE17055);
+  static const Color incomeColor = Color(0xFF00B894);
+  static const Color backgroundColor = Color(0xFFF8F9FA);
+  
+  // 预算颜色
+  static const Color budgetGreen = Color(0xFF00B894);
+  static const Color budgetYellow = Color(0xFFFDCB6E);
+  static const Color budgetRed = Color(0xFFE17055);
+  
+  // 图表颜色列表
+  static const List<Color> chartColors = [...];
+}
+
+class TransactionType {
+  static const String expense = 'expense';
+  static const String income = 'income';
+}
+```
 
 #### `date_utils.dart`
 
-**日期工具**:
-- 获取日期范围(今日/本周/本月)
-- 日期格式化
-- 日期比较
+**日期工具函数**:
+- `fromMonthInt(int month)`: 将 YYYYM 转换为 DateTime
+- `formatMonth(DateTime date)`: 格式化月份为 "YYYY年MM月"
+- `getMonthStart(DateTime date)`: 获取月份第一天
+- `getMonthEnd(DateTime date)`: 获取月份最后一天
 
 ---
 
@@ -379,18 +449,23 @@ class BudgetModel {
 **职责**:
 - 应用初始化
 - 配置主题
-- 配置路由
+- 配置多语言
 - 启动画面
 
 **结构**:
-```dart
+```
 void main() → 初始化系统UI → 运行应用
   └── YAccountApp
       └── MultiProvider (状态管理)
-          └── MaterialApp
-              └── _AppWrapper (初始化包装器)
-                  ├── _SplashScreen (启动画面)
-                  └── HomePage (首页)
+          ├── AppProvider
+          ├── TransactionProvider
+          └── BudgetProvider
+      └── MaterialApp
+          ├── 主题配置
+          └── 本地化配置
+          └── _AppWrapper (初始化包装器)
+              ├── _SplashScreen (启动画面)
+              └── HomePage (首页)
 ```
 
 ---
@@ -415,41 +490,46 @@ TransactionProvider 通知更新
 UI 自动刷新
 ```
 
-### 2. 查询统计流程
+### 2. 统计查询流程
 
 ```
-HomePage 请求数据
+HomePage/StatisticsPage 请求数据
     ↓
-TransactionProvider.loadStatistics()
+TransactionProvider.loadStatistics() / getCategoryStats()
     ↓
-DatabaseHelper.getStatistics()
+DatabaseHelper.getStatistics() / getCategoryStatistics()
     ↓
 SQLite Database (聚合查询)
     ↓
 返回统计结果
     ↓
-UI 展示数据
+UI 展示图表
 ```
 
-### 3. 导入导出流程
+### 3. 预算管理流程
 
 ```
-导入:
-选择文件 → ImportExportPage → 解析文件 → TransactionProvider.importTransactions() → Database
-
-导出:
-TransactionProvider.exportTransactions() → 生成文件 → 保存/分享
+BudgetPage 请求预算
+    ↓
+BudgetProvider.loadBudgets()
+    ↓
+DatabaseHelper.getBudgets()
+    ↓
+计算使用率
+    ↓
+UI 显示进度条
 ```
 
 ---
 
 ## 性能优化措施
 
-1. **数据库索引**: 为 `transactions.date` 字段建立索引,加速日期查询
-2. **分页加载**: 历史记录每次加载20条,避免一次性加载大量数据
-3. **异步初始化**: 数据库异步初始化,不阻塞UI启动
-4. **数据聚合**: 统计查询使用 SQL GROUP BY,减少数据传输量
-5. **图表优化**: 图表数据预聚合,减少渲染压力
+1. **数据库索引**: 为 `transactions.date`、`type`、`category` 字段建立索引，加速查询
+2. **分页加载**: 历史记录每次加载20条，避免一次性加载大量数据
+3. **异步初始化**: 数据库异步初始化，不阻塞UI启动
+4. **数据聚合**: 统计查询使用 SQL GROUP BY，减少数据传输量
+5. **图表优化**: 图表数据预聚合，减少渲染压力
+6. **字体动态缩放**: 统计卡片根据金额长度自动调整字体，避免溢出
 
 ---
 
@@ -458,7 +538,7 @@ TransactionProvider.exportTransactions() → 生成文件 → 保存/分享
 1. **数据库加密**: 使用 `sqflite_sqlcipher` 支持数据库加密
 2. **密码保护**: 应用密码通过 SHA256 派生为数据库密钥
 3. **无网络权限**: Android/iOS 均不申请网络权限
-4. **数据隔离**: 数据存储在应用私有目录,其他应用无法访问
+4. **数据隔离**: 数据存储在应用私有目录，其他应用无法访问
 
 ---
 
@@ -473,4 +553,4 @@ YAccount 采用清晰的分层架构:
 - **组件层**: 可复用UI组件
 - **工具层**: 辅助功能
 
-各层职责明确,便于维护和扩展。
+各层职责明确，便于维护和扩展。
