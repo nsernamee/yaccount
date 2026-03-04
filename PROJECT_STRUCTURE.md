@@ -554,3 +554,106 @@ YAccount 采用清晰的分层架构:
 - **工具层**: 辅助功能
 
 各层职责明确，便于维护和扩展。
+
+---
+
+## iOS 构建指南
+
+### 平台支持说明
+
+Flutter 支持跨平台开发，但 iOS 的编译只能在 macOS 环境下进行。Windows 和 Linux 用户无法直接在本地构建 iOS 应用。
+
+### 构建方案
+
+#### 方案一：本地构建（仅限 macOS）
+
+**环境要求：**
+- macOS 10.14 或更高版本
+- Xcode 12.0 或更高版本
+- Flutter SDK 3.16.0+
+- CocoaPods
+
+**构建步骤：**
+
+```bash
+# 1. 进入项目目录
+cd yaccount
+
+# 2. 安装依赖
+flutter pub get
+
+# 3. 检查可用设备
+flutter devices
+
+# 4. 运行到 iOS 模拟器
+flutter run -d "iPhone 16 Pro"
+
+# 5. 构建 release 版本
+flutter build ios --release
+```
+
+#### 方案二：云构建服务（推荐）
+
+Windows 用户可使用云端 Mac 进行构建：
+
+| 服务 | 说明 | 费用 |
+|------|------|------|
+| **Cloud Studio** | 腾讯云云端开发环境，有Mac节点 | 有免费额度 |
+| **Codematic** | 支持iOS云构建 | 按量计费 |
+| **GitHub Actions** | CI/CD构建iOS | 免费额度 |
+
+**Cloud Studio 构建示例：**
+
+1. 访问 Cloud Studio 并登录
+2. 创建新工作空间，选择 macOS 镜像
+3. 克隆项目：`git clone <your-repo-url>`
+4. 执行构建：
+   ```bash
+   cd yaccount
+   flutter pub get
+   flutter build ios --release
+   ```
+
+#### 方案三：仅使用 Android
+
+项目已完整支持 Android，无需 iOS 时可直接构建 Android APK：
+
+```bash
+# 构建 Android APK
+flutter build apk --release
+
+# APK 位置：build/app/outputs/flutter-apk/app-release.apk
+```
+
+### iOS 配置说明
+
+项目已包含基础 iOS 配置：
+
+| 配置项 | 文件 | 状态 |
+|--------|------|------|
+| 应用名称 | `ios/Runner/Info.plist` | ✅ 已配置 |
+| 包标识符 | `ios/Runner/Info.plist` | ✅ 使用默认 |
+| 竖屏支持 | `ios/Runner/Info.plist` | ✅ 已配置 |
+| 启动画面 | `ios/Runner/LaunchScreen.storyboard` | ✅ 已配置 |
+| App Icon | `ios/Runner/Assets.xcassets` | ✅ 占位图已有 |
+
+### 发布到 App Store
+
+1. **配置签名证书**（在 Xcode 中）
+2. **设置 App Store Connect**
+3. **构建 Archive**：
+   ```bash
+   flutter build ios --release --analyze-time
+   ```
+4. **使用 Xcode 上传**：Organizer → Upload to App Store
+
+### 常见问题
+
+**Q: Windows 能构建 iOS 吗？**
+> 不能，iOS 编译必须使用 macOS 或云构建服务。
+
+**Q: 模拟器无法启动？**
+> 打开 macOS 自带 Simulator：`open -a Simulator`
+
+**Q: 构建失败？**
+> 清理缓存：`flutter clean && flutter pub get && cd ios && pod install`
