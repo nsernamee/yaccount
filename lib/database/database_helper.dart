@@ -1,97 +1,121 @@
-import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:io';
+import 'package:sqflite_sqlcipher/sqflite.dart';
+import 'package:crypto/crypto.dart';
+
 import '../models/transaction_model.dart';
 import '../models/budget_model.dart';
+import '../models/category_model.dart';
 
-/// 数据库Helper类 - 使用加密SQLite
+/// 数据库帮助类
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
   static Database? _database;
-  
+
   factory DatabaseHelper() => _instance;
-  
+
   DatabaseHelper._internal();
 
-  // 数据库配置
-  static const String _databaseName = 'yaccount_encrypted.db';
-  static const int _databaseVersion = 1;
+  /// 数据库名称
+  static const String _dbName = 'yaccount.db';
+  static const int _dbVersion = 1;
 
-  // 获取数据库实例（异步初始化）
+  /// 获取数据库实例
   Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
+    _database ??= await _initDatabase();
     return _database!;
   }
 
-  /// 初始化加密数据库
-  Future<Database> _initDatabase() async {
-    final Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    final String path = join(documentsDirectory.path, _databaseName);
+  /// 初始化数据库
+  Future<Database> _initDatabase({String? password}) async {
+    String path;
 
-    // 从安全存储获取密码密钥（这里简化处理，实际应从系统密钥链获取）
-    final String password = _getDatabasePassword();
+    if (kIsWeb) {
+      // Web 平台不支持本地数据库，抛出异常
+      throw UnsupportedError('Web platform is not supported. Please use Android or iOS device.');
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      // 移动平台使用 path_provider
+      final documentsDirectory = await getApplicationDocumentsDirectory();
+      path = join(documentsDirectory.path, _dbName);
+    } else {
+      // 其他平台使用临时目录
+      final tempDir = Directory.systemTemp;
+      path = join(tempDir.path, _dbName);
+    }
 
-    // 打开加密数据库
-    final Database db = await openDatabase(
+    // 标准方式打开数据库，暂时不使用加密
+    return await openDatabase(
       path,
-      version: _databaseVersion,
-      password: password,
+      version: _dbVersion,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
-
-    return db;
   }
 
-  /// 获取数据库加密密钥
-  String _getDatabasePassword() {
-    // 实际项目中应该从安全存储获取用户设置的密码
-    // 这里使用固定密钥作为示例
-    return 'yaccount_secure_password_2024';
+  /// 从密码派生数据库密钥
+  String _deriveKey(String password) {
+    final bytes = utf8.encode(password);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
-  /// 创建数据库表
+  /// 初始化数据库（首次创建）
   Future<void> _onCreate(Database db, int version) async {
     // 创建交易记录表
     await db.execute('''
       CREATE TABLE transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL CHECK(type IN ('expense', 'income')),
-        amount REAL NOT NULL CHECK(amount > 0),
-        note TEXT,
+        id TEXT PRIMARY KEY,
+        amount REAL NOT NULL,
+        type TEXT NOT NULL,
         category TEXT NOT NULL,
-        transaction_date TEXT NOT NULL,
+        note TEXT,
+        date TEXT NOT NULL,
         created_at TEXT NOT NULL
       )
     ''');
 
-    // 为日期字段创建索引（性能优化）
-    await db.execute('''
-      CREATE INDEX idx_transaction_date 
-      ON transactions(transaction_date DESC)
-    ''');
-
-    // 为类型字段创建索引
-    await db.execute('''
-      CREATE INDEX idx_transaction_type 
-      ON transactions(type)
-    ''');
+    // 创建索引优化查询性能
+    await db.execute(
+      'CREATE INDEX idx_transaction_date ON transactions(date)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transaction_type ON transactions(type)',
+    );
+    await db.execute(
+      'CREATE INDEX idx_transaction_category ON transactions(category)',
+    );
 
     // 创建预算表
     await db.execute('''
       CREATE TABLE budgets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id TEXT PRIMARY KEY,
         category TEXT NOT NULL,
-        amount REAL NOT NULL CHECK(amount >= 0),
-        year INTEGER NOT NULL,
+        amount REAL NOT NULL,
         month INTEGER NOT NULL,
-        UNIQUE(category, year, month)
+        created_at TEXT NOT NULL,
+        UNIQUE(category, month)
       )
     ''');
 
-    // 创建应用设置表
+    // 创建分类表
+    await db.execute('''
+      CREATE TABLE categories (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL,
+        color_value INTEGER NOT NULL
+      )
+    ''');
+
+    // 插入默认分类
+    for (final category in DefaultCategories.categories) {
+      await db.insert('categories', category.toMap());
+    }
+
+    // 创建设置表
     await db.execute('''
       CREATE TABLE settings (
         key TEXT PRIMARY KEY,
@@ -105,7 +129,16 @@ class DatabaseHelper {
     // 未来版本升级逻辑
   }
 
-  // ==================== 交易记录 CRUD 操作 ====================
+  /// 重新初始化数据库（用于加密/解密切换）
+  Future<void> reinitialize({String? password}) async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+    _database = await _initDatabase(password: password);
+  }
+
+  // ========== 交易记录 CRUD ==========
 
   /// 插入交易记录
   Future<int> insertTransaction(TransactionModel transaction) async {
@@ -116,13 +149,11 @@ class DatabaseHelper {
   /// 批量插入交易记录（使用事务优化性能）
   Future<void> insertTransactionsBatch(List<TransactionModel> transactions) async {
     final db = await database;
-    final batch = db.batch();
-    
-    for (var transaction in transactions) {
-      batch.insert('transactions', transaction.toMap());
-    }
-    
-    await batch.commit(noResult: true);
+    await db.transaction((txn) async {
+      for (final transaction in transactions) {
+        await txn.insert('transactions', transaction.toMap());
+      }
+    });
   }
 
   /// 更新交易记录
@@ -137,7 +168,7 @@ class DatabaseHelper {
   }
 
   /// 删除交易记录
-  Future<int> deleteTransaction(int id) async {
+  Future<int> deleteTransaction(String id) async {
     final db = await database;
     return await db.delete(
       'transactions',
@@ -146,223 +177,197 @@ class DatabaseHelper {
     );
   }
 
-  /// 获取交易记录
-  Future<TransactionModel?> getTransaction(int id) async {
+  /// 批量删除交易记录
+  Future<int> deleteTransactions(List<String> ids) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final placeholders = List.filled(ids.length, '?').join(',');
+    return await db.delete(
       'transactions',
-      where: 'id = ?',
-      whereArgs: [id],
-      limit: 1,
+      where: 'id IN ($placeholders)',
+      whereArgs: ids,
     );
-
-    if (maps.isEmpty) return null;
-    return TransactionModel.fromMap(maps.first);
   }
 
-  /// 获取所有交易记录
-  Future<List<TransactionModel>> getAllTransactions() async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'transactions',
-      orderBy: 'transaction_date DESC',
-    );
-
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
-  }
-
-  /// 分页获取交易记录（性能优化：懒加载）
-  Future<List<TransactionModel>> getTransactionsPaginated({
-    int offset = 0,
-    int limit = 20,
-  }) async {
-    final db = await database;
-    
-    // 只查询需要的字段，避免 SELECT *
-    final List<Map<String, dynamic>> maps = await db.query(
-      'transactions',
-      columns: ['id', 'type', 'amount', 'note', 'category', 'transaction_date'],
-      orderBy: 'transaction_date DESC',
-      offset: offset,
-      limit: limit,
-    );
-
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
-  }
-
-  /// 按日期范围获取交易记录
-  Future<List<TransactionModel>> getTransactionsByDateRange(
-    DateTime startDate,
-    DateTime endDate,
-  ) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'transactions',
-      where: 'transaction_date BETWEEN ? AND ?',
-      whereArgs: [
-        startDate.toIso8601String(),
-        endDate.toIso8601String(),
-      ],
-      orderBy: 'transaction_date DESC',
-    );
-
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
-  }
-
-  /// 获取指定类型的交易记录
-  Future<List<TransactionModel>> getTransactionsByType(String type) async {
-    final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
-      'transactions',
-      where: 'type = ?',
-      whereArgs: [type],
-      orderBy: 'transaction_date DESC',
-    );
-
-    return maps.map((map) => TransactionModel.fromMap(map)).toList();
-  }
-
-  /// 获取今日交易记录
-  Future<List<TransactionModel>> getTodayTransactions() async {
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
-    return getTransactionsByDateRange(startOfDay, endOfDay);
-  }
-
-  /// 获取本周交易记录
-  Future<List<TransactionModel>> getWeekTransactions() async {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final startOfDay = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-    final endOfWeek = startOfDay.add(const Duration(days: 7));
-
-    return getTransactionsByDateRange(startOfDay, endOfWeek);
-  }
-
-  /// 获取本月交易记录
-  Future<List<TransactionModel>> getMonthTransactions() async {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final startOfNextMonth = DateTime(now.year, now.month + 1, 1);
-
-    return getTransactionsByDateRange(startOfMonth, startOfNextMonth);
-  }
-
-  /// 获取统计数据
-  Future<Map<String, double>> getStatistics({
+  /// 查询所有交易记录（分页）
+  Future<List<TransactionModel>> getTransactions({
+    int page = 0,
+    int pageSize = 20,
+    String? type,
     DateTime? startDate,
     DateTime? endDate,
   }) async {
     final db = await database;
-    
-    String query = 'SELECT type, SUM(amount) as total FROM transactions';
-    List<dynamic> args = [];
+    final where = <String>[];
+    final whereArgs = <dynamic>[];
 
-    if (startDate != null && endDate != null) {
-      query += ' WHERE transaction_date BETWEEN ? AND ?';
-      args = [startDate.toIso8601String(), endDate.toIso8601String()];
+    if (type != null) {
+      where.add('type = ?');
+      whereArgs.add(type);
     }
-    
-    query += ' GROUP BY type';
+    if (startDate != null) {
+      where.add('date >= ?');
+      whereArgs.add(startDate.toIso8601String().split('T')[0]);
+    }
+    if (endDate != null) {
+      where.add('date <= ?');
+      whereArgs.add(endDate.toIso8601String().split('T')[0]);
+    }
 
-    final List<Map<String, dynamic>> results = await db.rawQuery(query, args);
+    // 优化：只查询需要的字段
+    final results = await db.query(
+      'transactions',
+      columns: ['id', 'amount', 'type', 'category', 'note', 'date', 'created_at'],
+      where: where.isNotEmpty ? where.join(' AND ') : null,
+      whereArgs: whereArgs.isNotEmpty ? whereArgs : null,
+      orderBy: 'date DESC, created_at DESC',
+      limit: pageSize,
+      offset: page * pageSize,
+    );
 
-    return {
-      for (var row in results) row['type'] as String: (row['total'] as num).toDouble()
-    };
+    return results.map((map) => TransactionModel.fromMap(map)).toList();
   }
 
-  /// 获取按分类汇总的数据（用于饼图）
-  Future<Map<String, double>> getCategoryStatistics(
-    String type,
-    int year,
-    int month,
-  ) async {
+  /// 获取交易记录总数
+  Future<int> getTransactionCount({String? type, DateTime? startDate, DateTime? endDate}) async {
     final db = await database;
-    
-    final startDate = DateTime(year, month, 1);
-    final endDate = DateTime(year, month + 1, 1);
+    final where = <String>[];
+    final whereArgs = <dynamic>[];
 
-    final List<Map<String, dynamic>> results = await db.rawQuery('''
+    if (type != null) {
+      where.add('type = ?');
+      whereArgs.add(type);
+    }
+    if (startDate != null) {
+      where.add('date >= ?');
+      whereArgs.add(startDate.toIso8601String().split('T')[0]);
+    }
+    if (endDate != null) {
+      where.add('date <= ?');
+      whereArgs.add(endDate.toIso8601String().split('T')[0]);
+    }
+
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM transactions${where.isNotEmpty ? ' WHERE ${where.join(' AND ')}' : ''}',
+      whereArgs.isNotEmpty ? whereArgs : null,
+    );
+    return result.first['count'] as int;
+  }
+
+  /// 获取今日/本周/本月统计
+  Future<Map<String, double>> getStatistics({
+    required DateTime startDate,
+    required DateTime endDate,
+  }) async {
+    final db = await database;
+    final start = startDate.toIso8601String().split('T')[0];
+    final end = endDate.toIso8601String().split('T')[0];
+
+    final results = await db.rawQuery('''
+      SELECT type, SUM(amount) as total
+      FROM transactions
+      WHERE date >= ? AND date <= ?
+      GROUP BY type
+    ''', [start, end]);
+
+    final stats = <String, double>{
+      'expense': 0,
+      'income': 0,
+    };
+
+    for (final row in results) {
+      final type = row['type'] as String;
+      final total = (row['total'] as num?)?.toDouble() ?? 0;
+      stats[type] = total;
+    }
+
+    return stats;
+  }
+
+  /// 获取按分类统计（用于饼图）
+  Future<Map<String, double>> getCategoryStatistics({
+    required DateTime startDate,
+    required DateTime endDate,
+    String type = 'expense',
+  }) async {
+    final db = await database;
+    final start = startDate.toIso8601String().split('T')[0];
+    final end = endDate.toIso8601String().split('T')[0];
+
+    final results = await db.rawQuery('''
       SELECT category, SUM(amount) as total
       FROM transactions
-      WHERE type = ? 
-        AND transaction_date >= ? 
-        AND transaction_date < ?
+      WHERE date >= ? AND date <= ? AND type = ?
       GROUP BY category
       ORDER BY total DESC
-    ''', [type, startDate.toIso8601String(), endDate.toIso8601String()]);
+    ''', [start, end, type]);
 
-    return {
-      for (var row in results) row['category'] as String: (row['total'] as num).toDouble()
-    };
-  }
-
-  /// 获取近6个月的收支对比数据（用于柱状图）
-  Future<List<Map<String, dynamic>>> getMonthlyComparison(int months) async {
-    final db = await database;
-    final now = DateTime.now();
-    final List<Map<String, dynamic>> results = [];
-
-    for (int i = 0; i < months; i++) {
-      final monthDate = DateTime(now.year, now.month - i, 1);
-      final nextMonth = DateTime(now.year, now.month - i + 1, 1);
-
-      final monthlyResults = await db.rawQuery('''
-        SELECT type, SUM(amount) as total
-        FROM transactions
-        WHERE transaction_date >= ? AND transaction_date < ?
-        GROUP BY type
-      ''', [monthDate.toIso8601String(), nextMonth.toIso8601String()]);
-
-      final Map<String, dynamic> monthData = {
-        'month': '${monthDate.year}-${monthDate.month.toString().padLeft(2, '0')}',
-        'income': 0.0,
-        'expense': 0.0,
-      };
-
-      for (var row in monthlyResults) {
-        final type = row['type'] as String;
-        final total = (row['total'] as num).toDouble();
-        monthData[type] = total;
-      }
-
-      results.add(monthData);
+    final stats = <String, double>{};
+    for (final row in results) {
+      final category = row['category'] as String;
+      final total = (row['total'] as num?)?.toDouble() ?? 0;
+      stats[category] = total;
     }
 
-    return results.reversed.toList();
+    return stats;
   }
 
-  /// 获取当月每日支出数据（用于折线图）
-  Future<List<Map<String, dynamic>>> getDailyExpenseTrend(int year, int month) async {
+  /// 获取近N个月的收支对比（用于柱状图）
+  Future<List<Map<String, dynamic>>> getMonthlyStatistics(int months) async {
     final db = await database;
-    final startDate = DateTime(year, month, 1);
-    final endDate = DateTime(year, month + 1, 1);
+    final now = DateTime.now();
+    final results = <Map<String, dynamic>>[];
 
-    final List<Map<String, dynamic>> results = await db.rawQuery('''
-      SELECT 
-        substr(transaction_date, 1, 10) as date,
-        SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expense,
-        SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income
+    for (int i = months - 1; i >= 0; i--) {
+      final date = DateTime(now.year, now.month - i, 1);
+      final start = DateTime(date.year, date.month, 1);
+      final end = DateTime(date.year, date.month + 1, 0);
+
+      final stats = await getStatistics(startDate: start, endDate: end);
+      results.add({
+        'month': date.month,
+        'year': date.year,
+        'expense': stats['expense'] ?? 0,
+        'income': stats['income'] ?? 0,
+      });
+    }
+
+    return results;
+  }
+
+  /// 获取当月每日支出趋势（用于折线图）
+  Future<Map<String, double>> getDailyExpenseTrend({
+    required int year,
+    required int month,
+  }) async {
+    final db = await database;
+    final start = DateTime(year, month, 1);
+    final end = DateTime(year, month + 1, 0);
+
+    final results = await db.rawQuery('''
+      SELECT date, SUM(amount) as total
       FROM transactions
-      WHERE transaction_date >= ? AND transaction_date < ?
+      WHERE date >= ? AND date <= ? AND type = 'expense'
       GROUP BY date
       ORDER BY date
-    ''', [startDate.toIso8601String(), endDate.toIso8601String()]);
+    ''', [
+      start.toIso8601String().split('T')[0],
+      end.toIso8601String().split('T')[0],
+    ]);
 
-    return results.map((row) => {
-      'date': row['date'] as String,
-      'expense': (row['expense'] as num?)?.toDouble() ?? 0.0,
-      'income': (row['income'] as num?)?.toDouble() ?? 0.0,
-    }).toList();
+    final trend = <String, double>{};
+    for (final row in results) {
+      final date = row['date'] as String;
+      final total = (row['total'] as num?)?.toDouble() ?? 0;
+      trend[date] = total;
+    }
+
+    return trend;
   }
 
-  // ==================== 预算 CRUD 操作 ====================
+  // ========== 预算 CRUD ==========
 
-  /// 插入或更新预算
-  Future<void> insertOrUpdateBudget(BudgetModel budget) async {
+  /// 设置预算
+  Future<void> setBudget(BudgetModel budget) async {
     final db = await database;
     await db.insert(
       'budgets',
@@ -372,33 +377,32 @@ class DatabaseHelper {
   }
 
   /// 获取指定月份的预算
-  Future<BudgetModel?> getBudget(String category, int year, int month) async {
+  Future<BudgetModel?> getBudget(int month, {String? category}) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final results = await db.query(
       'budgets',
-      where: 'category = ? AND year = ? AND month = ?',
-      whereArgs: [category, year, month],
-      limit: 1,
+      where: category != null ? 'month = ? AND category = ?' : 'month = ? AND category = ?',
+      whereArgs: category != null ? [month, category] : [month, 'total'],
     );
 
-    if (maps.isEmpty) return null;
-    return BudgetModel.fromMap(maps.first);
+    if (results.isEmpty) return null;
+    return BudgetModel.fromMap(results.first);
   }
 
-  /// 获取指定月份的所有预算
-  Future<List<BudgetModel>> getBudgetsByMonth(int year, int month) async {
+  /// 获取指定月份所有预算
+  Future<List<BudgetModel>> getBudgets(int month) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final results = await db.query(
       'budgets',
-      where: 'year = ? AND month = ?',
-      whereArgs: [year, month],
+      where: 'month = ?',
+      whereArgs: [month],
     );
 
-    return maps.map((map) => BudgetModel.fromMap(map)).toList();
+    return results.map((map) => BudgetModel.fromMap(map)).toList();
   }
 
   /// 删除预算
-  Future<int> deleteBudget(int id) async {
+  Future<int> deleteBudget(String id) async {
     final db = await database;
     return await db.delete(
       'budgets',
@@ -407,38 +411,10 @@ class DatabaseHelper {
     );
   }
 
-  /// 计算预算使用率
-  Future<Map<String, double>> getBudgetUsage(int year, int month) async {
-    final budgets = await getBudgetsByMonth(year, month);
-    final Map<String, double> usage = {};
-
-    for (var budget in budgets) {
-      final transactions = await getTransactionsByDateRange(
-        DateTime(year, month, 1),
-        DateTime(year, month + 1, 1),
-      );
-
-      double spent = 0.0;
-      for (var tx in transactions) {
-        if (tx.type == 'expense') {
-          if (budget.category == 'total') {
-            spent += tx.amount;
-          } else if (tx.category == budget.category) {
-            spent += tx.amount;
-          }
-        }
-      }
-
-      usage[budget.category] = budget.amount > 0 ? (spent / budget.amount) : 0.0;
-    }
-
-    return usage;
-  }
-
-  // ==================== 设置操作 ====================
+  // ========== 设置 CRUD ==========
 
   /// 保存设置
-  Future<void> saveSetting(String key, String value) async {
+  Future<void> setSetting(String key, String value) async {
     final db = await database;
     await db.insert(
       'settings',
@@ -450,21 +426,30 @@ class DatabaseHelper {
   /// 获取设置
   Future<String?> getSetting(String key) async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(
+    final results = await db.query(
       'settings',
       where: 'key = ?',
       whereArgs: [key],
-      limit: 1,
     );
 
-    if (maps.isEmpty) return null;
-    return maps.first['value'] as String;
+    if (results.isEmpty) return null;
+    return results.first['value'] as String;
   }
 
-  /// 关闭数据库连接
-  Future<void> close() async {
+  /// 删除所有数据
+  Future<void> deleteAllData() async {
     final db = await database;
-    await db.close();
-    _database = null;
+    await db.transaction((txn) async {
+      await txn.delete('transactions');
+      await txn.delete('budgets');
+    });
+  }
+
+  /// 关闭数据库
+  Future<void> close() async {
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
   }
 }

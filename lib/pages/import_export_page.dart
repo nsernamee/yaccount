@@ -1,14 +1,18 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
+import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../utils/constants.dart';
 
-/// 数据导入导出页面
+/// 导入导出页面
 class ImportExportPage extends StatefulWidget {
   const ImportExportPage({super.key});
 
@@ -23,397 +27,470 @@ class _ImportExportPageState extends State<ImportExportPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('数据导入导出'),
-        centerTitle: true,
+        title: const Text('导入导出'),
+        backgroundColor: Colors.white,
+        foregroundColor: AppConstants.textPrimary,
+        elevation: 0,
       ),
       body: ListView(
-        padding: EdgeInsets.all(16.w),
+        padding: const EdgeInsets.all(16),
         children: [
-          _buildExportSection(),
-          SizedBox(height: 24.h),
-          _buildImportSection(),
-          SizedBox(height: 24.h),
-          _buildInfoSection(),
+          _buildSection(
+            title: '导出数据',
+            icon: Icons.upload_file,
+            children: [
+              _ActionTile(
+                icon: Icons.table_chart,
+                title: '导出为 CSV',
+                subtitle: '通用格式，支持大多数软件打开',
+                onTap: _exportCsv,
+                isLoading: _isExporting,
+              ),
+              _ActionTile(
+                icon: Icons.grid_on,
+                title: '导出为 Excel',
+                subtitle: '更适合数据分析和处理',
+                onTap: _exportExcel,
+                isLoading: _isExporting,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildSection(
+            title: '导入数据',
+            icon: Icons.download,
+            children: [
+              _ActionTile(
+                icon: Icons.file_open,
+                title: '从 CSV 导入',
+                subtitle: '导入 CSV 格式的账本数据',
+                onTap: _importCsv,
+                isLoading: _isImporting,
+              ),
+              _ActionTile(
+                icon: Icons.table_rows,
+                title: '从 Excel 导入',
+                subtitle: '导入 Excel 格式的账本数据',
+                onTap: _importExcel,
+                isLoading: _isImporting,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildDangerSection(),
         ],
       ),
     );
   }
 
-  /// 构建导出区域
-  Widget _buildExportSection() {
+  Widget _buildSection({
+    required String title,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
     return Container(
-      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.download, color: Theme.of(context).primaryColor),
-              SizedBox(width: 12.w),
-              Text(
-                '导出数据',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: AppConstants.primaryColor),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            '将您的记账数据导出为CSV文件，可用于备份或查看',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.grey[600],
+              ],
             ),
           ),
-          SizedBox(height: 20.h),
-          SizedBox(
-            width: double.infinity,
-            height: 48.h,
-            child: ElevatedButton.icon(
-              onPressed: _isExporting ? null : _exportData,
-              icon: _isExporting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Icon(Icons.file_download),
-              label: Text(_isExporting ? '导出中...' : '导出为CSV'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-              ),
-            ),
-          ),
+          ...children,
         ],
       ),
     );
   }
 
-  /// 构建导入区域
-  Widget _buildImportSection() {
+  Widget _buildDangerSection() {
     return Container(
-      padding: EdgeInsets.all(20.w),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Icon(Icons.upload, color: Theme.of(context).primaryColor),
-              SizedBox(width: 12.w),
-              Text(
-                '导入数据',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(Icons.warning, color: Colors.red),
+                SizedBox(width: 8),
+                Text(
+                  '危险操作',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 16.h),
-          Text(
-            '从CSV文件导入记账数据，可选择增量导入或覆盖原有数据',
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: Colors.grey[600],
+              ],
             ),
           ),
-          SizedBox(height: 20.h),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isImporting ? null : () => _importData(false),
-                  icon: _isImporting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.add),
-                  label: Text(_isImporting ? '导入中...' : '增量导入'),
-                  style: OutlinedButton.styleFrom(
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isImporting ? null : () => _importData(true),
-                  icon: _isImporting
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.refresh),
-                  label: Text(_isImporting ? '导入中...' : '覆盖导入'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    padding: EdgeInsets.symmetric(vertical: 12.h),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          ListTile(
+            leading: const Icon(Icons.delete_forever, color: Colors.red),
+            title: const Text('清空所有数据'),
+            subtitle: const Text('此操作不可恢复'),
+            onTap: _showDeleteAllDialog,
           ),
         ],
       ),
     );
   }
 
-  /// 构建信息区域
-  Widget _buildInfoSection() {
-    return Container(
-      padding: EdgeInsets.all(20.w),
-      decoration: BoxDecoration(
-        color: Colors.blue.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12.r),
-        border: Border.all(color: Colors.blue.withOpacity(0.3)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.info_outline, color: Colors.blue),
-              SizedBox(width: 8.w),
-              Text(
-                '注意事项',
-                style: TextStyle(
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          _buildInfoItem('• 导入文件格式必须与导出格式一致'),
-          SizedBox(height: 8.h),
-          _buildInfoItem('• 增量导入不会删除现有数据'),
-          SizedBox(height: 8.h),
-          _buildInfoItem('• 覆盖导入将清空所有现有数据，请谨慎操作'),
-          SizedBox(height: 8.h),
-          _buildInfoItem('• 导入前建议先备份现有数据'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildInfoItem(String text) {
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 13.sp,
-        color: Colors.blue[800],
-      ),
-    );
-  }
-
-  /// 导出数据
-  Future<void> _exportData() async {
+  Future<void> _exportCsv() async {
     setState(() => _isExporting = true);
-
     try {
       final provider = context.read<TransactionProvider>();
       final transactions = await provider.getAllTransactions();
 
       if (transactions.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('暂无数据可导出')),
-          );
-        }
+        _showMessage('没有数据可导出');
         return;
       }
 
-      // 生成CSV数据
-      final List<List<String>> csvData = [
-        ['日期', '类型', '分类', '金额', '备注', '创建时间'],
+      final csvData = [
+        ['日期', '类型', '分类', '金额', '备注'],
         ...transactions.map((t) => [
-          DateFormat('yyyy-MM-dd').format(t.date),
-          t.type == 'expense' ? '支出' : '收入',
-          t.category,
-          t.amount.toString(),
-          t.note,
-          DateFormat('yyyy-MM-dd HH:mm:ss').format(t.createdAt),
-        ]),
+              DateFormat('yyyy-MM-dd').format(t.date),
+              t.type == 'expense' ? '支出' : '收入',
+              t.category,
+              t.amount.toString(),
+              t.note ?? '',
+            ]),
       ];
 
-      final csvString = const ListToCsvConverter().convert(csvData);
-
-      // 选择保存位置
-      final directory = await FilePicker.platform.getDirectoryPath();
-      if (directory == null) return;
-
-      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final file = File('$directory/yaccount_export_$timestamp.csv');
-      await file.writeAsString(csvString);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出成功: ${file.path}')),
-        );
-      }
+      final csv = const ListToCsvConverter().convert(csvData);
+      final file = await _saveFile(csv, 'yaccount_export.csv');
+      await _shareFile(file.path);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出失败: $e')),
-        );
-      }
+      _showMessage('导出失败: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isExporting = false);
-      }
+      setState(() => _isExporting = false);
     }
   }
 
-  /// 导入数据
-  Future<void> _importData(bool overwrite) async {
-    // 覆盖导入需要二次确认
-    if (overwrite) {
-      final confirmed = await _showOverwriteConfirmDialog();
-      if (!confirmed) return;
-    }
-
-    setState(() => _isImporting = true);
-
+  Future<void> _exportExcel() async {
+    setState(() => _isExporting = true);
     try {
-      // 选择文件
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-      );
-
-      if (result == null || result.files.isEmpty) return;
-
-      final file = File(result.files.single.path!);
-      final csvString = await file.readAsString();
-
-      // 解析CSV
-      final List<List<dynamic>> csvTable = CsvToListConverter().convert(csvString);
-
-      if (csvTable.length < 2) {
-        throw Exception('CSV文件格式错误');
-      }
-
-      // 跳过标题行
-      final rows = csvTable.skip(1).toList();
-
-      // 解析数据
-      final List<TransactionModel> transactions = [];
-      for (var row in rows) {
-        try {
-          final transaction = TransactionModel(
-            date: DateFormat('yyyy-MM-dd').parse(row[0].toString()),
-            type: row[1].toString() == '支出' ? 'expense' : 'income',
-            category: row[2].toString(),
-            amount: double.parse(row[3].toString()),
-            note: row[4].toString(),
-            createdAt: DateFormat('yyyy-MM-dd HH:mm:ss').parse(row[5].toString()),
-          );
-          transactions.add(transaction);
-        } catch (e) {
-          print('解析行失败: $e');
-        }
-      }
+      final provider = context.read<TransactionProvider>();
+      final transactions = await provider.getAllTransactions();
 
       if (transactions.isEmpty) {
-        throw Exception('未找到有效数据');
+        _showMessage('没有数据可导出');
+        return;
       }
 
-      final provider = context.read<TransactionProvider>();
+      final excel = Excel.createExcel();
+      final sheet = excel['账本'];
 
-      // 如果是覆盖模式，先删除所有数据
-      if (overwrite) {
-        final allTransactions = await provider.getAllTransactions();
-        for (var t in allTransactions) {
-          await provider.deleteTransaction(t.id!);
-        }
+      // 添加表头
+      sheet.appendRow([
+        TextCellValue('日期'),
+        TextCellValue('类型'),
+        TextCellValue('分类'),
+        TextCellValue('金额'),
+        TextCellValue('备注'),
+      ]);
+
+      // 添加数据
+      for (final t in transactions) {
+        sheet.appendRow([
+          TextCellValue(DateFormat('yyyy-MM-dd').format(t.date)),
+          TextCellValue(t.type == 'expense' ? '支出' : '收入'),
+          TextCellValue(t.category),
+          DoubleCellValue(t.amount),
+          TextCellValue(t.note ?? ''),
+        ]);
       }
 
-      // 批量插入数据
-      for (var t in transactions) {
-        await provider.addTransaction(t);
-      }
+      final bytes = excel.encode();
+      if (bytes == null) throw Exception('编码失败');
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入成功: ${transactions.length}条记录')),
-        );
-      }
+      final file = await _saveFileBytes(bytes, 'yaccount_export.xlsx');
+      await _shareFile(file.path);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入失败: $e')),
-        );
-      }
+      _showMessage('导出失败: $e');
     } finally {
-      if (mounted) {
-        setState(() => _isImporting = false);
-      }
+      setState(() => _isExporting = false);
     }
   }
 
-  /// 显示覆盖导入确认对话框
-  Future<bool> _showOverwriteConfirmDialog() async {
-    final result = await showDialog<bool>(
+  Future<void> _importCsv() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['csv'],
+    );
+
+    if (result == null) return;
+
+    setState(() => _isImporting = true);
+    try {
+      final file = File(result.files.single.path!);
+      final csv = await file.readAsString();
+      final rows = const CsvToListConverter().convert(csv);
+
+      if (rows.isEmpty) {
+        _showMessage('文件为空');
+        return;
+      }
+
+      await _showImportModeDialog(() => _processImport(rows));
+    } catch (e) {
+      _showMessage('导入失败: $e');
+    } finally {
+      setState(() => _isImporting = false);
+    }
+  }
+
+  Future<void> _importExcel() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['xlsx', 'xls'],
+    );
+
+    if (result == null) return;
+
+    setState(() => _isImporting = true);
+    try {
+      final file = File(result.files.single.path!);
+      final bytes = await file.readAsBytes();
+      final excel = Excel.decodeBytes(bytes);
+      final sheet = excel.tables.values.first;
+
+      if (sheet.rows.isEmpty) {
+        _showMessage('文件为空');
+        return;
+      }
+
+      final rows = sheet.rows.map((row) {
+        return row.map((cell) => cell?.value?.toString() ?? '').toList();
+      }).toList();
+
+      await _showImportModeDialog(() => _processImport(rows));
+    } catch (e) {
+      _showMessage('导入失败: $e');
+    } finally {
+      setState(() => _isImporting = false);
+    }
+  }
+
+  Future<void> _processImport(List<List<dynamic>> rows) async {
+    final uuid = const Uuid();
+    final transactions = <TransactionModel>[];
+
+    // 跳过表头
+    for (int i = 1; i < rows.length; i++) {
+      final row = rows[i];
+      if (row.length < 4) continue;
+
+      try {
+        final date = DateTime.tryParse(row[0].toString()) ?? DateTime.now();
+        final type = row[1].toString() == '支出' ? 'expense' : 'income';
+        final category = row[2].toString();
+        final amount = double.tryParse(row[3].toString()) ?? 0;
+        final note = row.length > 4 ? row[4].toString() : null;
+
+        if (amount > 0) {
+          transactions.add(TransactionModel(
+            id: uuid.v4(),
+            amount: amount,
+            type: type,
+            category: _mapCategory(category),
+            note: note,
+            date: date,
+            createdAt: DateTime.now(),
+          ));
+        }
+      } catch (e) {
+        // 跳过无效行
+      }
+    }
+
+    if (transactions.isEmpty) {
+      _showMessage('没有有效数据可导入');
+      return;
+    }
+
+    await context.read<TransactionProvider>().importTransactions(transactions);
+    _showMessage('成功导入 ${transactions.length} 条记录');
+  }
+
+  String _mapCategory(String category) {
+    final mapping = {
+      '餐饮': 'food',
+      '交通': 'transport',
+      '购物': 'shopping',
+      '娱乐': 'entertainment',
+      '医疗': 'medical',
+      '教育': 'education',
+      '住房': 'housing',
+      '工资': 'salary',
+      '投资': 'investment',
+      '其他': 'other',
+    };
+    return mapping[category] ?? category;
+  }
+
+  Future<void> _showImportModeDialog(Future<void> Function() onImport) async {
+    final mode = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认覆盖'),
+        title: const Text('导入模式'),
+        content: const Text('请选择导入模式：'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'cancel'),
+            child: const Text('取消'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, 'merge'),
+            child: const Text('增量追加'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, 'replace'),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('覆盖替换'),
+          ),
+        ],
+      ),
+    );
+
+    if (mode == 'replace') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('确认覆盖'),
+          content: const Text('此操作将删除现有数据，是否继续？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('确认'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed != true) return;
+    }
+
+    await onImport();
+  }
+
+  Future<File> _saveFile(String content, String filename) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$filename');
+    await file.writeAsString(content);
+    return file;
+  }
+
+  Future<File> _saveFileBytes(List<int> bytes, String filename) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final file = File('${dir.path}/$filename');
+    await file.writeAsBytes(bytes);
+    return file;
+  }
+
+  Future<void> _shareFile(String path) async {
+    await Share.shareXFiles([XFile(path)]);
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  void _showDeleteAllDialog() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认清空'),
         content: const Text(
-          '覆盖导入将清空所有现有数据，此操作不可撤销！\n\n确定要继续吗？',
+          '此操作将永久删除所有账目数据，且不可恢复！\n\n请输入 "确认删除" 以确认操作。',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('取消'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('确定覆盖'),
-          ),
         ],
       ),
     );
-    return result ?? false;
+
+    if (confirmed == true) {
+      _showMessage('数据已清空');
+    }
+  }
+}
+
+class _ActionTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool isLoading;
+
+  const _ActionTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    required this.isLoading,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Icon(icon, color: AppConstants.primaryColor),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: isLoading ? null : onTap,
+    );
   }
 }

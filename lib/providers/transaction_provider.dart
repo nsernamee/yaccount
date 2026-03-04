@@ -1,157 +1,179 @@
 import 'package:flutter/foundation.dart';
-import '../models/transaction_model.dart';
+import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
+import '../models/transaction_model.dart';
 
-/// 交易记录状态管理Provider
-class TransactionProvider with ChangeNotifier {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  
+/// 交易数据Provider
+class TransactionProvider extends ChangeNotifier {
+  final DatabaseHelper _db = DatabaseHelper();
+  final Uuid _uuid = const Uuid();
+
   List<TransactionModel> _transactions = [];
-  List<TransactionModel> _todayTransactions = [];
-  List<TransactionModel> _weekTransactions = [];
-  List<TransactionModel> _monthTransactions = [];
-  
   bool _isLoading = false;
-  int _totalCount = 0;
+  bool _hasMore = true;
+  int _currentPage = 0;
+  static const int _pageSize = 20;
 
-  // Getters
+  // 统计数据缓存
+  Map<String, double> _todayStats = {};
+  Map<String, double> _weekStats = {};
+  Map<String, double> _monthStats = {};
+
   List<TransactionModel> get transactions => _transactions;
-  List<TransactionModel> get todayTransactions => _todayTransactions;
-  List<TransactionModel> get weekTransactions => _weekTransactions;
-  List<TransactionModel> get monthTransactions => _monthTransactions;
   bool get isLoading => _isLoading;
-  int get totalCount => _totalCount;
+  bool get hasMore => _hasMore;
+  Map<String, double> get todayStats => _todayStats;
+  Map<String, double> get weekStats => _weekStats;
+  Map<String, double> get monthStats => _monthStats;
 
-  // 统计数据
-  double get todayIncome => _calculateTotal(_todayTransactions, 'income');
-  double get todayExpense => _calculateTotal(_todayTransactions, 'expense');
-  double get todayBalance => todayIncome - todayExpense;
-  
-  double get weekIncome => _calculateTotal(_weekTransactions, 'income');
-  double get weekExpense => _calculateTotal(_weekTransactions, 'expense');
-  double get weekBalance => weekIncome - weekExpense;
-  
-  double get monthIncome => _calculateTotal(_monthTransactions, 'income');
-  double get monthExpense => _calculateTotal(_monthTransactions, 'expense');
-  double get monthBalance => monthIncome - monthExpense;
-
-  /// 计算总计
-  double _calculateTotal(List<TransactionModel> transactions, String type) {
-    return transactions
-        .where((t) => t.type == type)
-        .fold(0.0, (sum, t) => sum + t.amount);
-  }
-
-  /// 初始化加载
+  /// 初始化并加载数据
   Future<void> initialize() async {
-    await loadTodayTransactions();
-    await loadWeekTransactions();
-    await loadMonthTransactions();
+    await loadTransactions();
+    await loadStatistics();
   }
 
-  /// 加载今日交易记录
-  Future<void> loadTodayTransactions() async {
-    _todayTransactions = await _dbHelper.getTodayTransactions();
-    notifyListeners();
-  }
-
-  /// 加载本周交易记录
-  Future<void> loadWeekTransactions() async {
-    _weekTransactions = await _dbHelper.getWeekTransactions();
-    notifyListeners();
-  }
-
-  /// 加载本月交易记录
-  Future<void> loadMonthTransactions() async {
-    _monthTransactions = await _dbHelper.getMonthTransactions();
-    notifyListeners();
-  }
-
-  /// 分页加载历史记录
-  Future<void> loadTransactionsPaginated({bool reset = false}) async {
+  /// 加载交易记录（分页）
+  Future<void> loadTransactions({bool refresh = false}) async {
     if (_isLoading) return;
-    
+
+    if (refresh) {
+      _currentPage = 0;
+      _transactions = [];
+      _hasMore = true;
+    }
+
+    if (!_hasMore) return;
+
     _isLoading = true;
     notifyListeners();
 
     try {
-      if (reset) {
-        _transactions = [];
-      }
-
-      final newTransactions = await _dbHelper.getTransactionsPaginated(
-        offset: _transactions.length,
-        limit: 20,
+      final newTransactions = await _db.getTransactions(
+        page: _currentPage,
+        pageSize: _pageSize,
       );
 
-      _transactions.addAll(newTransactions);
-      
-      // 如果返回的记录少于20条，说明已经加载完所有数据
-      if (newTransactions.length < 20) {
-        _totalCount = _transactions.length;
+      if (newTransactions.length < _pageSize) {
+        _hasMore = false;
       }
+
+      _transactions.addAll(newTransactions);
+      _currentPage++;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
+  /// 加载更多（分页加载）
+  Future<void> loadMore() async {
+    if (_isLoading || !_hasMore) return;
+    await loadTransactions();
+  }
+
+  /// 刷新数据
+  Future<void> refresh() async {
+    await loadTransactions(refresh: true);
+    await loadStatistics();
+  }
+
+  /// 加载统计数据
+  Future<void> loadStatistics() async {
+    final now = DateTime.now();
+
+    // 今日统计
+    final today = DateTime(now.year, now.month, now.day);
+    _todayStats = await _db.getStatistics(
+      startDate: today,
+      endDate: now,
+    );
+
+    // 本周统计
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    _weekStats = await _db.getStatistics(
+      startDate: weekStart,
+      endDate: now,
+    );
+
+    // 本月统计
+    final monthStart = DateTime(now.year, now.month, 1);
+    final monthEnd = DateTime(now.year, now.month + 1, 0);
+    _monthStats = await _db.getStatistics(
+      startDate: monthStart,
+      endDate: monthEnd,
+    );
+
+    notifyListeners();
+  }
+
   /// 添加交易记录
-  Future<void> addTransaction(TransactionModel transaction) async {
-    await _dbHelper.insertTransaction(transaction);
-    await _refreshAllData();
+  Future<void> addTransaction({
+    required double amount,
+    required String type,
+    required String category,
+    String? note,
+    DateTime? date,
+  }) async {
+    final transaction = TransactionModel(
+      id: _uuid.v4(),
+      amount: amount,
+      type: type,
+      category: category,
+      note: note,
+      date: date ?? DateTime.now(),
+      createdAt: DateTime.now(),
+    );
+
+    await _db.insertTransaction(transaction);
+    await refresh();
   }
 
   /// 更新交易记录
   Future<void> updateTransaction(TransactionModel transaction) async {
-    await _dbHelper.updateTransaction(transaction);
-    await _refreshAllData();
+    await _db.updateTransaction(transaction);
+    await refresh();
   }
 
   /// 删除交易记录
-  Future<void> deleteTransaction(int id) async {
-    await _dbHelper.deleteTransaction(id);
-    await _refreshAllData();
+  Future<void> deleteTransaction(String id) async {
+    await _db.deleteTransaction(id);
+    await refresh();
   }
 
-  /// 刷新所有数据
-  Future<void> _refreshAllData() async {
-    await Future.wait([
-      loadTodayTransactions(),
-      loadWeekTransactions(),
-      loadMonthTransactions(),
-    ]);
-    
-    // 重置并重新加载历史记录
-    _transactions.clear();
-    await loadTransactionsPaginated(reset: true);
+  /// 批量导入交易记录
+  Future<void> importTransactions(List<TransactionModel> transactions) async {
+    await _db.insertTransactionsBatch(transactions);
+    await refresh();
   }
 
-  /// 获取按分类汇总的数据
-  Future<Map<String, double>> getCategoryStatistics(
-    String type,
-    int year,
-    int month,
-  ) async {
-    return await _dbHelper.getCategoryStatistics(type, year, month);
+  /// 获取所有交易记录（用于导出）
+  Future<List<TransactionModel>> getAllTransactions() async {
+    return await _db.getTransactions(pageSize: 999999);
   }
 
-  /// 获取近6个月的收支对比数据
-  Future<List<Map<String, dynamic>>> getMonthlyComparison(int months) async {
-    return await _dbHelper.getMonthlyComparison(months);
+  /// 获取分类统计（饼图用）
+  Future<Map<String, double>> getCategoryStats({
+    required DateTime startDate,
+    required DateTime endDate,
+    String type = 'expense',
+  }) async {
+    return await _db.getCategoryStatistics(
+      startDate: startDate,
+      endDate: endDate,
+      type: type,
+    );
   }
 
-  /// 获取当月每日支出数据
-  Future<List<Map<String, dynamic>>> getDailyExpenseTrend(
-    int year,
-    int month,
-  ) async {
-    return await _dbHelper.getDailyExpenseTrend(year, month);
+  /// 获取月度统计（柱状图用）
+  Future<List<Map<String, dynamic>>> getMonthlyStats(int months) async {
+    return await _db.getMonthlyStatistics(months);
   }
 
-  @override
-  void dispose() {
-    _dbHelper.close();
-    super.dispose();
+  /// 获取每日支出趋势（折线图用）
+  Future<Map<String, double>> getDailyTrend({
+    required int year,
+    required int month,
+  }) async {
+    return await _db.getDailyExpenseTrend(year: year, month: month);
   }
 }

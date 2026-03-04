@@ -1,73 +1,95 @@
 import 'package:flutter/foundation.dart';
-import '../models/budget_model.dart';
+import 'package:uuid/uuid.dart';
 import '../database/database_helper.dart';
+import '../models/budget_model.dart';
 
-/// 预算状态管理Provider
-class BudgetProvider with ChangeNotifier {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  
+/// 预算数据Provider
+class BudgetProvider extends ChangeNotifier {
+  final DatabaseHelper _db = DatabaseHelper();
+  final Uuid _uuid = const Uuid();
+
   List<BudgetModel> _budgets = [];
-  Map<String, double> _budgetUsage = {};
-  
+  BudgetModel? _totalBudget;
   bool _isLoading = false;
 
-  // Getters
   List<BudgetModel> get budgets => _budgets;
-  Map<String, double> get budgetUsage => _budgetUsage;
+  BudgetModel? get totalBudget => _totalBudget;
   bool get isLoading => _isLoading;
 
+  /// 获取当前月份
+  int get currentMonth {
+    final now = DateTime.now();
+    return now.year * 100 + now.month;
+  }
+
+  /// 初始化并加载预算
+  Future<void> initialize() async {
+    await loadBudgets(currentMonth);
+  }
+
   /// 加载指定月份的预算
-  Future<void> loadBudgets(int year, int month) async {
+  Future<void> loadBudgets(int month) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      _budgets = await _dbHelper.getBudgetsByMonth(year, month);
-      _budgetUsage = await _dbHelper.getBudgetUsage(year, month);
+      _budgets = await _db.getBudgets(month);
+      _totalBudget = _budgets.where((b) => b.category == 'total').firstOrNull;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// 保存或更新预算
-  Future<void> saveBudget(BudgetModel budget) async {
-    await _dbHelper.insertOrUpdateBudget(budget);
-    
-    // 刷新预算列表
-    await loadBudgets(budget.year, budget.month);
+  /// 设置总预算
+  Future<void> setTotalBudget(double amount, int month) async {
+    final existing = _budgets.where((b) => b.category == 'total').firstOrNull;
+
+    final budget = BudgetModel(
+      id: existing?.id ?? _uuid.v4(),
+      category: 'total',
+      amount: amount,
+      month: month,
+      createdAt: existing?.createdAt ?? DateTime.now(),
+    );
+
+    await _db.setBudget(budget);
+    await loadBudgets(month);
+  }
+
+  /// 设置分类预算
+  Future<void> setCategoryBudget(String category, double amount, int month) async {
+    final existing = _budgets.where((b) => b.category == category).firstOrNull;
+
+    final budget = BudgetModel(
+      id: existing?.id ?? _uuid.v4(),
+      category: category,
+      amount: amount,
+      month: month,
+      createdAt: existing?.createdAt ?? DateTime.now(),
+    );
+
+    await _db.setBudget(budget);
+    await loadBudgets(month);
   }
 
   /// 删除预算
-  Future<void> deleteBudget(int id) async {
-    await _dbHelper.deleteBudget(id);
-    
-    // 刷新预算列表
-    if (_budgets.isNotEmpty) {
-      await loadBudgets(_budgets.first.year, _budgets.first.month);
-    }
+  Future<void> deleteBudget(String id) async {
+    await _db.deleteBudget(id);
+    await loadBudgets(currentMonth);
   }
 
-  /// 获取预算使用率
-  double getBudgetUsageRate(String category) {
-    return _budgetUsage[category] ?? 0.0;
+  /// 计算预算使用率
+  double calculateUsageRate(double spent, double? budget) {
+    if (budget == null || budget <= 0) return 0;
+    return (spent / budget * 100).clamp(0, 100);
   }
 
-  /// 获取预算状态颜色
-  String getBudgetStatusColor(double usageRate) {
-    if (usageRate < 0.7) return 'green';
-    if (usageRate < 0.9) return 'yellow';
-    return 'red';
-  }
-
-  /// 检查是否超预算
-  bool isOverBudget(String category) {
-    return getBudgetUsageRate(category) >= 1.0;
-  }
-
-  @override
-  void dispose() {
-    _dbHelper.close();
-    super.dispose();
+  /// 获取预算使用率颜色
+  /// <70% 绿色, 70-90% 黄色, >90% 红色
+  int getUsageColor(double rate) {
+    if (rate < 70) return 0xFF00B894; // 绿色
+    if (rate < 90) return 0xFFFDCB6E; // 黄色
+    return 0xFFE17055; // 红色
   }
 }

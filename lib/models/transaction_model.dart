@@ -1,19 +1,19 @@
 /// 交易记录模型
 class TransactionModel {
-  final int? id;
-  final String type; // 'expense' 或 'income'
+  final String id;
   final double amount;
-  final String note;
+  final String type; // 'expense' or 'income'
   final String category;
+  final String? note;
   final DateTime date;
   final DateTime createdAt;
 
   TransactionModel({
-    this.id,
-    required this.type,
+    required this.id,
     required this.amount,
-    required this.note,
+    required this.type,
     required this.category,
+    this.note,
     required this.date,
     required this.createdAt,
   });
@@ -21,42 +21,42 @@ class TransactionModel {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'type': type,
       'amount': amount,
-      'note': note,
+      'type': type,
       'category': category,
-      'transaction_date': date.toIso8601String(),
+      'note': note,
+      'date': date.toIso8601String().split('T')[0],
       'created_at': createdAt.toIso8601String(),
     };
   }
 
   factory TransactionModel.fromMap(Map<String, dynamic> map) {
     return TransactionModel(
-      id: map['id'] as int?,
-      type: map['type'] as String,
+      id: map['id'] as String,
       amount: (map['amount'] as num).toDouble(),
-      note: map['note'] as String,
+      type: map['type'] as String,
       category: map['category'] as String,
-      date: DateTime.parse(map['transaction_date'] as String),
+      note: map['note'] as String?,
+      date: DateTime.parse(map['date'] as String),
       createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
 
   TransactionModel copyWith({
-    int? id,
-    String? type,
+    String? id,
     double? amount,
-    String? note,
+    String? type,
     String? category,
+    String? note,
     DateTime? date,
     DateTime? createdAt,
   }) {
     return TransactionModel(
       id: id ?? this.id,
-      type: type ?? this.type,
       amount: amount ?? this.amount,
-      note: note ?? this.note,
+      type: type ?? this.type,
       category: category ?? this.category,
+      note: note ?? this.note,
       date: date ?? this.date,
       createdAt: createdAt ?? this.createdAt,
     );

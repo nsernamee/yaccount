@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../providers/transaction_provider.dart';
-import '../providers/app_provider.dart';
+import '../utils/constants.dart';
+import '../utils/date_utils.dart';
+import '../models/category_model.dart';
 
-/// 统计页面 - 包含饼图、柱状图、折线图
+/// 统计页面
 class StatisticsPage extends StatefulWidget {
   const StatisticsPage({super.key});
 
@@ -14,41 +14,443 @@ class StatisticsPage extends StatefulWidget {
   State<StatisticsPage> createState() => _StatisticsPageState();
 }
 
-class _StatisticsPageState extends<StatisticsPage> {
-  int _selectedTabIndex = 0;
+class _StatisticsPageState extends State<StatisticsPage> {
+  late DateTime _selectedMonth;
 
   @override
   void initState() {
     super.initState();
-    _loadStatisticsData();
-  }
-
-  Future<void> _loadStatisticsData() async {
-    final appProvider = context.read<AppProvider>();
-    // 数据加载会触发Consumer刷新
+    _selectedMonth = DateTime.now();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
-        title: const Text('统计分析'),
-        centerTitle: true,
+        title: const Text('统计'),
+        backgroundColor: Colors.white,
+        foregroundColor: AppConstants.textPrimary,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month),
+            onPressed: _selectMonth,
+          ),
+        ],
       ),
-      body: Column(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildMonthHeader(),
+            const SizedBox(height: 20),
+            _buildPieChart(),
+            const SizedBox(height: 24),
+            _buildBarChart(),
+            const SizedBox(height: 24),
+            _buildLineChart(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
         children: [
-          _buildMonthSelector(),
-          _buildTabBar(),
+          IconButton(
+            icon: const Icon(Icons.chevron_left, color: Colors.white),
+            onPressed: () {
+              setState(() {
+                _selectedMonth = DateTime(
+                  _selectedMonth.year,
+                  _selectedMonth.month - 1,
+                );
+              });
+            },
+          ),
           Expanded(
-            child: Consumer<TransactionProvider>(
-              builder: (context, provider, child) {
-                if (_selectedTabIndex == 0) {
-                  return _buildPieChartTab(provider);
-                } else if (_selectedTabIndex == 1) {
-                  return _buildBarChartTab(provider);
-                } else {
-                  return _buildLineChartTab(provider);
+            child: Text(
+              AppDateUtils.formatMonth(_selectedMonth),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right, color: Colors.white),
+            onPressed: _selectedMonth.month < DateTime.now().month ||
+                    _selectedMonth.year < DateTime.now().year
+                ? () {
+                    setState(() {
+                      _selectedMonth = DateTime(
+                        _selectedMonth.year,
+                        _selectedMonth.month + 1,
+                      );
+                    });
+                  }
+                : null,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectMonth() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedMonth,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDatePickerMode: DatePickerMode.year,
+    );
+    if (picked != null) {
+      setState(() => _selectedMonth = picked);
+    }
+  }
+
+  Widget _buildPieChart() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '支出分类',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          FutureBuilder<Map<String, double>>(
+            future: _getCategoryStats(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                return const SizedBox(
+                  height: 200,
+                  child: Center(child: Text('暂无数据')),
+                );
+              }
+
+              final data = snapshot.data!;
+              final total = data.values.fold(0.0, (a, b) => a + b);
+
+              return SizedBox(
+                height: 200,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: PieChart(
+                        PieChartData(
+                          sectionsSpace: 2,
+                          centerSpaceRadius: 40,
+                          sections: data.entries.map((entry) {
+                            final index = data.keys.toList().indexOf(entry.key);
+                            final color = AppConstants.chartColors[
+                                index % AppConstants.chartColors.length];
+                            return PieChartSectionData(
+                              value: entry.value,
+                              color: color,
+                              radius: 50,
+                              title: '${(entry.value / total * 100).toStringAsFixed(0)}%',
+                              titleStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: data.entries.map((entry) {
+                        final index = data.keys.toList().indexOf(entry.key);
+                        final color = AppConstants.chartColors[
+                            index % AppConstants.chartColors.length];
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 12,
+                                height: 12,
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _getCategoryName(entry.key),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<Map<String, double>> _getCategoryStats() async {
+    final provider = context.read<TransactionProvider>();
+    final startDate = DateTime(_selectedMonth.year, _selectedMonth.month, 1);
+    final endDate = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
+    return await provider.getCategoryStats(
+      startDate: startDate,
+      endDate: endDate,
+      type: 'expense',
+    );
+  }
+
+  Widget _buildBarChart() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '近6个月收支对比',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: FutureBuilder<List<Map<String, dynamic>>>(
+              future: _getMonthlyStats(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('暂无数据'));
                 }
+
+                final data = snapshot.data!;
+                return BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: _getMaxY(data),
+                    barGroups: data.asMap().entries.map((entry) {
+                      return BarChartGroupData(
+                        x: entry.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: (entry.value['income'] as num).toDouble(),
+                            color: AppConstants.incomeColor,
+                            width: 12,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
+                          ),
+                          BarChartRodData(
+                            toY: (entry.value['expense'] as num).toDouble(),
+                            color: AppConstants.expenseColor,
+                            width: 12,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            if (value.toInt() >= data.length) return const Text('');
+                            return Text(
+                              '${data[value.toInt()]['month']}月',
+                              style: const TextStyle(fontSize: 10),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    gridData: const FlGridData(show: false),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LegendItem(color: AppConstants.incomeColor, label: '收入'),
+              const SizedBox(width: 24),
+              _LegendItem(color: AppConstants.expenseColor, label: '支出'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  double _getMaxY(List<Map<String, dynamic>> data) {
+    double max = 0;
+    for (final item in data) {
+      final income = (item['income'] as num).toDouble();
+      final expense = (item['expense'] as num).toDouble();
+      if (income > max) max = income;
+      if (expense > max) max = expense;
+    }
+    return max * 1.2;
+  }
+
+  Future<List<Map<String, dynamic>>> _getMonthlyStats() async {
+    final provider = context.read<TransactionProvider>();
+    return await provider.getMonthlyStats(6);
+  }
+
+  Widget _buildLineChart() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '本月每日支出趋势',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 200,
+            child: FutureBuilder<Map<String, double>>(
+              future: _getDailyTrend(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('暂无数据'));
+                }
+
+                final data = snapshot.data!;
+                final daysInMonth = DateTime(
+                  _selectedMonth.year,
+                  _selectedMonth.month + 1,
+                  0,
+                ).day;
+
+                final spots = <FlSpot>[];
+                for (int i = 1; i <= daysInMonth; i++) {
+                  final date =
+                      '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}-${i.toString().padLeft(2, '0')}';
+                  spots.add(FlSpot(
+                    i.toDouble(),
+                    data[date] ?? 0,
+                  ));
+                }
+
+                return LineChart(
+                  LineChartData(
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: _getLineMaxY(spots) / 4,
+                    ),
+                    titlesData: FlTitlesData(
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: 7,
+                          getTitlesWidget: (value, meta) {
+                            return Text(
+                              '${value.toInt()}日',
+                              style: const TextStyle(fontSize: 10),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    minY: 0,
+                    maxY: _getLineMaxY(spots),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: spots,
+                        isCurved: true,
+                        color: AppConstants.expenseColor,
+                        barWidth: 3,
+                        dotData: const FlDotData(show: false),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: AppConstants.expenseColor.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               },
             ),
           ),
@@ -57,564 +459,59 @@ class _StatisticsPageState extends<StatisticsPage> {
     );
   }
 
-  /// 构建月份选择器
-  Widget _buildMonthSelector() {
-    return Consumer<AppProvider>(
-      builder: (context, appProvider, child) {
-        return Container(
-          padding: EdgeInsets.all(16.w),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[200]!),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left),
-                onPressed: () => appProvider.previousMonth(),
-              ),
-              Text(
-                '${appProvider.selectedYear}年${appProvider.selectedMonth}月',
-                style: TextStyle(
-                  fontSize: 18.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.chevron_right),
-                onPressed: () => appProvider.nextMonth(),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// 构建Tab切换器
-  Widget _buildTabBar() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Colors.grey[200]!),
-        ),
-      ),
-      child: Row(
-        children: [
-          _buildTabItem('分类占比', 0),
-          _buildTabItem('月度对比', 1),
-          _BuildTabItem('每日趋势', 2),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTabItem(String label, int index) {
-    final isSelected = _selectedTabIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedTabIndex = index),
-        child: Container(
-          padding: EdgeInsets.symmetric(vertical: 12.h),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isSelected ? Theme.of(context).primaryColor : Colors.transparent,
-                width: 2,
-              ),
-            ),
-          ),
-          child: Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14.sp,
-              color: isSelected ? Theme.of(context).primaryColor : Colors.grey[600],
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 构建饼图Tab（分类占比）
-  Widget _buildPieChartTab(TransactionProvider provider) {
-    return FutureBuilder<Map<String, double>>(
-      future: provider.getCategoryStatistics(
-        'expense',
-        context.read<AppProvider>().selectedYear,
-        context.read<AppProvider>().selectedMonth,
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Text(
-              '暂无数据',
-              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
-            ),
-          );
-        }
-
-        final data = snapshot.data!;
-        final total = data.values.reduce((a, b) => a + b);
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(16.w),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 250.h,
-                child: PieChart(
-                  PieChartData(
-                    sections: _buildPieSections(data, total),
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 40,
-                    borderData: FlBorderData(show: false),
-                  ),
-                ),
-              ),
-              SizedBox(height: 24.h),
-              _buildPieLegend(data, total),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  /// 构建饼图数据段
-  List<PieChartSectionData> _buildPieSections(Map<String, double> data, double total) {
-    final colors = [
-      Colors.red,
-      Colors.orange,
-      Colors.yellow,
-      Colors.green,
-      Colors.blue,
-      Colors.indigo,
-      Colors.purple,
-      Colors.pink,
-      Colors.teal,
-    ];
-
-    int index = 0;
-    return data.entries.map((entry) {
-      final value = entry.value;
-      final percentage = (value / total * 100).toStringAsFixed(1);
-      final color = colors[index % colors.length];
-
-      index++;
-      return PieChartSectionData(
-        color: color,
-        value: value,
-        title: '$percentage%',
-        radius: 80,
-        titleStyle: TextStyle(
-          fontSize: 12.sp,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-        ),
-      );
-    }).toList();
-  }
-
-  /// 构建饼图图例
-  Widget _buildPieLegend(Map<String, double> data, double total) {
-    final colors = [
-      Colors.red,
-      Colors.orange,
-      Colors.yellow,
-      Colors.green,
-      Colors.blue,
-      Colors.indigo,
-      Colors.purple,
-      Colors.pink,
-      Colors.teal,
-    ];
-
-    int index = 0;
-    final sortedData = data.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
-
-    return Column(
-      children: sortedData.map((entry) {
-        final color = colors[index % colors.length];
-        final percentage = (entry.value / total * 100).toStringAsFixed(1);
-        index++;
-
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: 8.h),
-          child: Row(
-            children: [
-              Container(
-                width: 12.w,
-                height: 12.w,
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              SizedBox(width: 12.w),
-              Expanded(
-                child: Text(
-                  entry.key,
-                  style: TextStyle(fontSize: 14.sp),
-                ),
-              ),
-              Text(
-                '¥${entry.value.toStringAsFixed(2)}',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              SizedBox(width: 16.w),
-              Text(
-                '$percentage%',
-                style: TextStyle(
-                  fontSize: 14.sp,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  /// 构建柱状图Tab（月度对比）
-  Widget _buildBarChartTab(TransactionProvider provider) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: provider.getMonthlyComparison(6),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Text(
-              '暂无数据',
-              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
-            ),
-          );
-        }
-
-        final data = snapshot.data!;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(16.w),
-          child: SizedBox(
-            height: 300.h,
-            child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: _calculateMaxY(data),
-                minY: 0,
-                groupsSpace: 12,
-                barGroups: _buildBarGroups(data),
-                borderData: FlBorderData(show: false),
-                gridData: FlGridData(show: false),
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) => _buildBottomTitle(value, data),
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  /// 计算Y轴最大值
-  double _calculateMaxY(List<Map<String, dynamic>> data) {
-    double maxIncome = 0;
-    double maxExpense = 0;
-
-    for (var month in data) {
-      maxIncome = maxIncome > (month['income'] as double) ? maxIncome : month['income'];
-      maxExpense = maxExpense > (month['expense'] as double) ? maxExpense : month['expense'];
+  double _getLineMaxY(List<FlSpot> spots) {
+    double max = 0;
+    for (final spot in spots) {
+      if (spot.y > max) max = spot.y;
     }
-
-    return ((maxIncome > maxExpense ? maxIncome : maxExpense) * 1.2).ceilToDouble();
+    return max > 0 ? max * 1.2 : 1000;
   }
 
-  /// 构建柱状图数据组
-  List<BarChartGroupData> _buildBarGroups(List<Map<String, dynamic>> data) {
-    return data.map((month) {
-      final index = data.indexOf(month);
-      return BarChartGroupData(
-        x: index,
-        barRods: [
-          BarChartRodData(
-            toY: month['income'] as double,
-            color: Colors.green,
-            width: 8,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          BarChartRodData(
-            toY: month['expense'] as double,
-            color: Colors.red,
-            width: 8,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ],
-      );
-    }).toList();
-  }
-
-  /// 构建底部标题
-  Widget _buildBottomTitle(double value, List<Map<String, dynamic>> data) {
-    final index = value.toInt();
-    if (index < 0 || index >= data.length) return const Text('');
-
-    final month = data[index]['month'] as String;
-    final parts = month.split('-');
-    return Padding(
-      padding: EdgeInsets.only(top: 8.h),
-      child: Text(
-        '${parts[1]}月',
-        style: TextStyle(
-          fontSize: 10.sp,
-          color: Colors.grey[600],
-        ),
-      ),
+  Future<Map<String, double>> _getDailyTrend() async {
+    final provider = context.read<TransactionProvider>();
+    return await provider.getDailyTrend(
+      year: _selectedMonth.year,
+      month: _selectedMonth.month,
     );
   }
 
-  /// 构建折线图Tab（每日趋势）
-  Widget _buildLineChartTab(TransactionProvider provider) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: provider.getDailyExpenseTrend(
-        context.read<AppProvider>().selectedYear,
-        context.read<AppProvider>().selectedMonth,
-      ),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(
-            child: Text(
-              '暂无数据',
-              style: TextStyle(fontSize: 16.sp, color: Colors.grey[600]),
-            ),
-          );
-        }
-
-        final data = snapshot.data!;
-
-        return SingleChildScrollView(
-          padding: EdgeInsets.all(16.w),
-          child: Column(
-            children: [
-              SizedBox(
-                height: 300.h,
-                child: LineChart(
-                  LineChartData(
-                    minY: 0,
-                    maxY: _calculateLineMaxY(data),
-                    lineBarsData: [
-                      _buildExpenseLine(data),
-                      _buildIncomeLine(data),
-                    ],
-                    borderData: FlBorderData(show: false),
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      getDrawingHorizontalLine: (value) => FlLine(
-                        color: Colors.grey[200],
-                        strokeWidth: 1,
-                      ),
-                    ),
-                    titlesData: FlTitlesData(
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          interval: (data.length / 7).ceilToDouble(),
-                          getTitlesWidget: (value, meta) => _buildLineBottomTitle(value, data),
-                        ),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 40,
-                          getTitlesWidget: (value, meta) => Text(
-                            value.toInt().toString(),
-                            style: TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
-                          ),
-                        ),
-                      ),
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                    ),
-                    lineTouchData: LineTouchData(
-                      touchTooltipData: LineTouchTooltipData(
-                        getTooltipColor: (touchedSpot) => Colors.white.withOpacity(0.9),
-                        getTooltipItems: (touchedSpots) {
-                          return touchedSpots.map((spot) {
-                            final index = spot.x.toInt();
-                            if (index >= data.length) return null;
-                            
-                            final day = data[index];
-                            final type = spot.barIndex == 0 ? '支出' : '收入';
-                            final amount = spot.y;
-                            
-                            return LineTooltipItem(
-                              '$type\n¥${amount.toStringAsFixed(2)}',
-                              TextStyle(
-                                color: spot.barIndex == 0 ? Colors.red : Colors.green,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12.sp,
-                              ),
-                            );
-                          }).toList();
-                        },
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 24.h),
-              _buildLineChartLegend(),
-            ],
-          ),
-        );
-      },
-    );
+  String _getCategoryName(String categoryId) {
+    final categories = {
+      'food': '餐饮',
+      'transport': '交通',
+      'shopping': '购物',
+      'entertainment': '娱乐',
+      'medical': '医疗',
+      'education': '教育',
+      'housing': '住房',
+      'salary': '工资',
+      'investment': '投资',
+      'other': '其他',
+    };
+    return categories[categoryId] ?? '其他';
   }
+}
 
-  /// 计算折线图Y轴最大值
-  double _calculateLineMaxY(List<Map<String, dynamic>> data) {
-    double maxY = 0;
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
 
-    for (var day in data) {
-      final expense = day['expense'] as double;
-      final income = day['income'] as double;
-      final maxDay = expense > income ? expense : income;
-      maxY = maxY > maxDay ? maxY : maxDay;
-    }
+  const _LegendItem({required this.color, required this.label});
 
-    return (maxY * 1.2).ceilToDouble();
-  }
-
-  /// 构建支出折线
-  LineChartBarData _buildExpenseLine(List<Map<String, dynamic>> data) {
-    return LineChartBarData(
-      isCurved: true,
-      color: Colors.red,
-      barWidth: 3,
-      isStrokeCapRound: true,
-      dotData: FlDotData(show: false),
-      belowBarData: BarAreaData(
-        show: true,
-        color: Colors.red.withOpacity(0.1),
-      ),
-      spots: data.asMap().entries.map((entry) {
-        return FlSpot(
-          entry.key.toDouble(),
-          entry.value['expense'] as double,
-        );
-      }).toList(),
-    );
-  }
-
-  /// 构建收入折线
-  LineChartBarData _buildIncomeLine(List<Map<String, dynamic>> data) {
-    return LineChartBarData(
-      isCurved: true,
-      color: Colors.green,
-      barWidth: 3,
-      isStrokeCapRound: true,
-      dotData: FlDotData(show: false),
-      belowBarData: BarAreaData(
-        show: true,
-        color: Colors.green.withOpacity(0.1),
-      ),
-      spots: data.asMap().entries.map((entry) {
-        return FlSpot(
-          entry.key.toDouble(),
-          entry.value['income'] as double,
-        );
-      }).toList(),
-    );
-  }
-
-  /// 构建折线图底部标题
-  Widget _buildLineBottomTitle(double value, List<Map<String, dynamic>> data) {
-    final index = value.toInt();
-    if (index < 0 || index >= data.length) return const Text('');
-
-    final dateStr = data[index]['date'] as String;
-    final day = int.parse(dateStr.split('-')[2]);
-
-    return Padding(
-      padding: EdgeInsets.only(top: 8.h),
-      child: Text(
-        '$day日',
-        style: TextStyle(fontSize: 10.sp, color: Colors.grey[600]),
-      ),
-    );
-  }
-
-  /// 构建折线图图例
-  Widget _buildLineChartLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        _buildLegendItem('支出', Colors.red),
-        SizedBox(width: 24.w),
-        _buildLegendItem('收入', Colors.green),
-      ],
-    );
-  }
-
-  /// 构建图例项
-  Widget _buildLegendItem(String label, Color color) {
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Container(
-          width: 12.w,
-          height: 12.w,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(
             color: color,
             shape: BoxShape.circle,
           ),
         ),
-        SizedBox(width: 8.w),
-        Text(
-          label,
-          style: TextStyle(fontSize: 14.sp),
-        ),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }

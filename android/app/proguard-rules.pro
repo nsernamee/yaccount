@@ -1,19 +1,33 @@
-# Flutter混淆规则
+# Flutter 混淆配置
+
+# 保持 Flutter 相关类
 -keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
--keep class io.flutter.** { *; }
--keep class io.flutter.plugins.** { *; }
+-keep class io.flutter.plugin.**  { *; }
+-keep class io.flutter.util.**  { *; }
+-keep class io.flutter.view.**  { *; }
+-keep class io.flutter.**  { *; }
+-keep class io.flutter.plugins.**  { *; }
 
-# SQLite相关
--keep class * extends android.database.sqlite.SQLiteOpenHelper { *; }
+# 保持 sqflite
+-keep class com.tekartik.sqflite.** { *; }
 
-# Provider相关
--keep class * extends androidx.lifecycle.ViewModel { *; }
+# 保持 crypto
+-keep class org.bouncycastle.** { *; }
+-keep class javax.crypto.** { *; }
 
-# 图表库
--keep class fl_chart.** { *; }
+# 保持 excel 包
+-keep class org.apache.poi.** { *; }
+-keep class org.apache.xmlbeans.** { *; }
 
-# 加密库
--keep class * extends javax.crypto.** { *; }
+# 移除日志
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+
+# 代码压缩优化
+-optimizationpasses 5
+-dontusemixedcaseclassnames
+-verbose
+-dontpreverify

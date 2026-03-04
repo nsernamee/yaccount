@@ -1,50 +1,33 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
-import '../models/category_constants.dart';
+import '../utils/constants.dart';
+import '../utils/date_utils.dart';
+import '../widgets/category_selector.dart';
 
-/// 添加/编辑交易记录页面
+/// 添加交易页面
 class AddTransactionPage extends StatefulWidget {
-  final TransactionModel? transaction;
   final String? initialType;
 
-  const AddTransactionPage({
-    super.key,
-    this.transaction,
-    this.initialType,
-  });
+  const AddTransactionPage({super.key, this.initialType});
 
   @override
   State<AddTransactionPage> createState() => _AddTransactionPageState();
 }
 
 class _AddTransactionPageState extends State<AddTransactionPage> {
-  final _formKey = GlobalKey<FormState>();
+  late String _transactionType;
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
-  
-  String _type = 'expense';
-  String _category = '餐饮';
+  String _selectedCategory = 'food';
   DateTime _selectedDate = DateTime.now();
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    
-    if (widget.transaction != null) {
-      // 编辑模式
-      _type = widget.transaction!.type;
-      _category = widget.transaction!.category;
-      _selectedDate = widget.transaction!.date;
-      _amountController.text = widget.transaction!.amount.toString();
-      _noteController.text = widget.transaction!.note;
-    } else if (widget.initialType != null) {
-      // 新增模式，指定类型
-      _type = widget.initialType!;
-    }
+    _transactionType = widget.initialType ?? 'expense';
   }
 
   @override
@@ -56,127 +39,88 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-      ),
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(20.w),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTypeSelector(),
-                    SizedBox(height: 20.h),
-                    _buildAmountInput(),
-                    SizedBox(height: 20.h),
-                    _buildCategorySelector(),
-                    SizedBox(height: 20.h),
-                    _buildDatePicker(),
-                    SizedBox(height: 20.h),
-                    _buildNoteInput(),
-                    SizedBox(height: 32.h),
-                    _buildSaveButton(),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-  /// 构建顶部标题栏
-  Widget _buildHeader() {
     return Container(
-      padding: EdgeInsets.all(16.w),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24.r)),
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey[200]!,
-            width: 1,
-          ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(bottom: bottomPadding),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildHeader(),
+            const SizedBox(height: 20),
+            _buildTypeSelector(),
+            const SizedBox(height: 20),
+            _buildAmountInput(),
+            const SizedBox(height: 20),
+            _buildDateSelector(),
+            const SizedBox(height: 20),
+            _buildCategorySelector(),
+            const SizedBox(height: 20),
+            _buildNoteInput(),
+            const SizedBox(height: 24),
+            _buildSaveButton(),
+          ],
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            widget.transaction == null ? '添加记录' : '编辑记录',
-            style: TextStyle(
-              fontSize: 18.sp,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: Icon(Icons.close, size: 24.w),
-          ),
-        ],
-      ),
     );
   }
 
-  /// 构建类型选择器
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        const Text(
+          '添加记录',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTypeSelector() {
     return Container(
-      padding: EdgeInsets.all(4.w),
       decoration: BoxDecoration(
         color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12.r),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
           Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _type = 'expense'),
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                decoration: BoxDecoration(
-                  color: _type == 'expense' ? Colors.red : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  '支出',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _type == 'expense' ? Colors.white : Colors.grey[700],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16.sp,
-                  ),
-                ),
-              ),
+            child: _TypeButton(
+              label: '支出',
+              icon: Icons.arrow_downward,
+              color: AppConstants.expenseColor,
+              isSelected: _transactionType == 'expense',
+              onTap: () => setState(() {
+                _transactionType = 'expense';
+                _selectedCategory = 'food';
+              }),
             ),
           ),
           Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _type = 'income'),
-              child: Container(
-                padding: EdgeInsets.symmetric(vertical: 12.h),
-                decoration: BoxDecoration(
-                  color: _type == 'income' ? Colors.green : Colors.transparent,
-                  borderRadius: BorderRadius.circular(8.r),
-                ),
-                child: Text(
-                  '收入',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: _type == 'income' ? Colors.white : Colors.grey[700],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16.sp,
-                  ),
-                ),
-              ),
+            child: _TypeButton(
+              label: '收入',
+              icon: Icons.arrow_upward,
+              color: AppConstants.incomeColor,
+              isSelected: _transactionType == 'income',
+              onTap: () => setState(() {
+                _transactionType = 'income';
+                _selectedCategory = 'salary';
+              }),
             ),
           ),
         ],
@@ -184,163 +128,81 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  /// 构建金额输入
   Widget _buildAmountInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           '金额',
           style: TextStyle(
-            fontSize: 14.sp,
-            color: Colors.grey[600],
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: 8.h),
-        TextFormField(
+        const SizedBox(height: 8),
+        TextField(
           controller: _amountController,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
           decoration: InputDecoration(
-            prefixText: '¥',
-            prefixStyle: TextStyle(
-              fontSize: 24.sp,
+            prefixText: '¥ ',
+            prefixStyle: const TextStyle(
+              fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: _type == 'expense' ? Colors.red : Colors.green,
+              color: AppConstants.textPrimary,
             ),
+            hintText: '0.00',
             filled: true,
             fillColor: Colors.grey[50],
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            hintText: '0.00',
-            hintStyle: TextStyle(
-              fontSize: 24.sp,
-              color: Colors.grey[400],
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: _transactionType == 'expense'
+                    ? AppConstants.expenseColor
+                    : AppConstants.incomeColor,
+                width: 2,
+              ),
             ),
           ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return '请输入金额';
-            }
-            final amount = double.tryParse(value);
-            if (amount == null || amount <= 0) {
-              return '请输入有效的金额';
-            }
-            return null;
-          },
         ),
       ],
     );
   }
 
-  /// 构建分类选择器
-  Widget _buildCategorySelector() {
-    final categories = _type == 'expense'
-        ? CategoryConstants.expenseCategories
-        : CategoryConstants.incomeCategories;
-
+  Widget _buildDateSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '分类',
-          style: TextStyle(
-            fontSize: 14.sp,
-            color: Colors.grey[600],
-          ),
-        ),
-        SizedBox(height: 8.h),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 12.w,
-            mainAxisSpacing: 12.h,
-            childAspectRatio: 2.5,
-          ),
-          itemCount: categories.length,
-          itemBuilder: (context, index) {
-            final category = categories[index];
-            final icon = CategoryConstants.categoryIcons[category] ?? '📦';
-            final isSelected = _category == category;
-
-            return GestureDetector(
-              onTap: () => setState(() => _category = category),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (_type == 'expense' ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1))
-                      : Colors.grey[50],
-                  borderRadius: BorderRadius.circular(8.r),
-                  border: Border.all(
-                    color: isSelected
-                        ? (_type == 'expense' ? Colors.red : Colors.green)
-                        : Colors.transparent,
-                    width: 2,
-                  ),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(icon, style: TextStyle(fontSize: 20.sp)),
-                    SizedBox(height: 4.h),
-                    Text(
-                      category,
-                      style: TextStyle(
-                        fontSize: 12.sp,
-                        color: isSelected
-                            ? (_type == 'expense' ? Colors.red : Colors.green)
-                            : Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  /// 构建日期选择器
-  Widget _buildDatePicker() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
+        const Text(
           '日期',
           style: TextStyle(
-            fontSize: 14.sp,
-            color: Colors.grey[600],
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: 8.h),
+        const SizedBox(height: 8),
         GestureDetector(
-          onTap: () => _selectDate(),
+          onTap: _selectDate,
           child: Container(
-            padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 14.h),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.grey[50],
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  children: [
-                    Icon(Icons.calendar_today, size: 20.w, color: Colors.grey[600]),
-                    SizedBox(width: 12.w),
-                    Text(
-                      DateFormat('yyyy-MM-dd').format(_selectedDate),
-                      style: TextStyle(fontSize: 16.sp),
-                    ),
-                  ],
+                const Icon(Icons.calendar_today, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  AppDateUtils.formatChineseDate(_selectedDate),
+                  style: const TextStyle(fontSize: 16),
                 ),
-                Icon(Icons.chevron_right, size: 24.w),
+                const Spacer(),
+                const Icon(Icons.chevron_right),
               ],
             ),
           ),
@@ -349,97 +211,191 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
     );
   }
 
-  /// 构建备注输入
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  Widget _buildCategorySelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          '分类',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        CategorySelector(
+          selectedCategory: _selectedCategory,
+          transactionType: _transactionType,
+          onCategorySelected: (category) {
+            setState(() => _selectedCategory = category);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildNoteInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '备注',
+        const Text(
+          '备注（可选）',
           style: TextStyle(
-            fontSize: 14.sp,
-            color: Colors.grey[600],
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
           ),
         ),
-        SizedBox(height: 8.h),
-        TextFormField(
+        const SizedBox(height: 8),
+        TextField(
           controller: _noteController,
-          maxLines: 3,
+          maxLines: 2,
           decoration: InputDecoration(
+            hintText: '添加备注...',
             filled: true,
             fillColor: Colors.grey[50],
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12.r),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
             ),
-            hintText: '添加备注（可选）',
           ),
         ),
       ],
     );
   }
 
-  /// 构建保存按钮
   Widget _buildSaveButton() {
     return SizedBox(
       width: double.infinity,
-      height: 48.h,
+      height: 56,
       child: ElevatedButton(
-        onPressed: _saveTransaction,
+        onPressed: _isLoading ? null : _saveTransaction,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _type == 'expense' ? Colors.red : Colors.green,
+          backgroundColor: _transactionType == 'expense'
+              ? AppConstants.expenseColor
+              : AppConstants.incomeColor,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12.r),
+            borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: Text(
-          '保存',
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text(
+                '保存',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
 
-  /// 选择日期
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
+  Future<void> _saveTransaction() async {
+    final amountText = _amountController.text.trim();
+    if (amountText.isEmpty) {
+      _showError('请输入金额');
+      return;
+    }
 
-    if (picked != null && picked != _selectedDate) {
-      setState(() => _selectedDate = picked);
+    final amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      _showError('请输入有效金额');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      await context.read<TransactionProvider>().addTransaction(
+            amount: amount,
+            type: _transactionType,
+            category: _selectedCategory,
+            note: _noteController.text.trim().isEmpty
+                ? null
+                : _noteController.text.trim(),
+            date: _selectedDate,
+          );
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_transactionType == 'expense' ? '支出已记录' : '收入已记录'),
+            backgroundColor: AppConstants.primaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      _showError('保存失败，请重试');
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
-  /// 保存交易记录
-  void _saveTransaction() {
-    if (!_formKey.currentState!.validate()) return;
-
-    final amount = double.parse(_amountController.text);
-    final transaction = TransactionModel(
-      id: widget.transaction?.id,
-      type: _type,
-      amount: amount,
-      note: _noteController.text.trim(),
-      category: _category,
-      date: _selectedDate,
-      createdAt: widget.transaction?.createdAt ?? DateTime.now(),
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
+  }
+}
 
-    final provider = context.read<TransactionProvider>();
+class _TypeButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
 
-    if (widget.transaction == null) {
-      provider.addTransaction(transaction);
-    } else {
-      provider.updateTransaction(transaction);
-    }
+  const _TypeButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+  });
 
-    Navigator.pop(context);
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.grey,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

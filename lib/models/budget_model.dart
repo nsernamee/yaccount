@@ -1,17 +1,17 @@
 /// 预算模型
 class BudgetModel {
-  final int? id;
-  final String category; // 'total' 表示总预算
+  final String id;
+  final String category; // 'total' 表示总预算，其他为分类预算
   final double amount;
-  final int year;
-  final int month;
+  final int month; // 月份，格式：202601
+  final DateTime createdAt;
 
   BudgetModel({
-    this.id,
+    required this.id,
     required this.category,
     required this.amount,
-    required this.year,
     required this.month,
+    required this.createdAt,
   });
 
   Map<String, dynamic> toMap() {
@@ -19,34 +19,34 @@ class BudgetModel {
       'id': id,
       'category': category,
       'amount': amount,
-      'year': year,
       'month': month,
+      'created_at': createdAt.toIso8601String(),
     };
   }
 
   factory BudgetModel.fromMap(Map<String, dynamic> map) {
     return BudgetModel(
-      id: map['id'] as int?,
+      id: map['id'] as String,
       category: map['category'] as String,
       amount: (map['amount'] as num).toDouble(),
-      year: map['year'] as int,
       month: map['month'] as int,
+      createdAt: DateTime.parse(map['created_at'] as String),
     );
   }
 
   BudgetModel copyWith({
-    int? id,
+    String? id,
     String? category,
     double? amount,
-    int? year,
     int? month,
+    DateTime? createdAt,
   }) {
     return BudgetModel(
       id: id ?? this.id,
       category: category ?? this.category,
       amount: amount ?? this.amount,
-      year: year ?? this.year,
       month: month ?? this.month,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

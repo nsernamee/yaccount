@@ -1,168 +1,236 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'providers/app_provider.dart';
 import 'providers/transaction_provider.dart';
 import 'providers/budget_provider.dart';
-import 'providers/app_provider.dart';
 import 'pages/home_page.dart';
-import 'pages/history_page.dart';
-import 'pages/statistics_page.dart';
-import 'pages/budget_page.dart';
-import 'pages/import_export_page.dart';
-import 'pages/settings_page.dart';
+import 'utils/constants.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+
+  // 设置系统UI样式
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
+  );
+
+  // 竖屏模式
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  runApp(const YAccountApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class YAccountApp extends StatelessWidget {
+  const YAccountApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AppProvider()),
+        ChangeNotifierProvider(create: (_) => AppProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => BudgetProvider()),
       ],
       child: MaterialApp(
-        title: '本地记账',
+        title: 'YAccount',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
-          primarySwatch: Colors.blue,
           useMaterial3: true,
-          fontFamily: 'PingFang SC',
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppConstants.primaryColor,
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: AppConstants.backgroundColor,
+          appBarTheme: const AppBarTheme(
+            centerTitle: true,
+            elevation: 0,
+            backgroundColor: Colors.white,
+            foregroundColor: AppConstants.textPrimary,
+          ),
+          cardTheme: CardThemeData(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(16)),
+            ),
+          ),
+          elevatedButtonTheme: ElevatedButtonThemeData(
+            style: ElevatedButton.styleFrom(
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
-        home: const SplashPage(),
-        routes: {
-          '/home': (context) => const MainNavigation(),
-          '/history': (context) => const HistoryPage(),
-          '/statistics': (context) => const StatisticsPage(),
-          '/budget': (context) => const BudgetPage(),
-          '/import_export': (context) => const ImportExportPage(),
-          '/settings': (context) => const SettingsPage(),
-        },
+        home: const _AppWrapper(),
       ),
     );
   }
 }
 
-/// 启动页
-class SplashPage extends StatefulWidget {
-  const SplashPage({super.key});
+/// 应用启动包装器，处理初始化
+class _AppWrapper extends StatefulWidget {
+  const _AppWrapper();
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  State<_AppWrapper> createState() => _AppWrapperState();
 }
 
-class _SplashPageState extends State<SplashPage> {
+class _AppWrapperState extends State<_AppWrapper> {
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    _initialize();
   }
 
-  Future<void> _initializeApp() async {
-    final appProvider = context.read<AppProvider>();
-    await appProvider.initialize();
+  Future<void> _initialize() async {
+    // Web 平台不支持，直接显示提示
+    if (kIsWeb) {
+      return;
+    }
 
-    if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home');
+    // 等待数据库初始化完成
+    final appProvider = context.read<AppProvider>();
+    while (!appProvider.isDbReady) {
+      await Future.delayed(const Duration(milliseconds: 100));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return const _WebNotSupportedScreen();
+    }
+
+    return Consumer<AppProvider>(
+      builder: (context, appProvider, _) {
+        if (!appProvider.isInitialized) {
+          return const _SplashScreen();
+        }
+
+        return const HomePage();
+      },
+    );
+  }
+}
+
+/// 启动画面
+class _SplashScreen extends StatelessWidget {
+  const _SplashScreen();
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.account_balance_wallet,
-              size: 80.w,
-              color: Theme.of(context).primaryColor,
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              '本地记账',
-              style: TextStyle(
-                fontSize: 24.sp,
-                fontWeight: FontWeight.bold,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
+          ),
+        ),
+        child: const Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.account_balance_wallet,
+                size: 80,
+                color: Colors.white,
               ),
-            ),
-            SizedBox(height: 32.h),
-            const CircularProgressIndicator(),
-          ],
+              SizedBox(height: 24),
+              Text(
+                'YAccount',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              SizedBox(height: 8),
+              Text(
+                '本地记账，安全隐私',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 16,
+                ),
+              ),
+              SizedBox(height: 48),
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-/// 主导航页面
-class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
-
-  @override
-  State<MainNavigation> createState() => _MainNavigationState();
-}
-
-class _MainNavigationState extends State<MainNavigation> {
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = const [
-    HomePage(),
-    HistoryPage(),
-    StatisticsPage(),
-    BudgetPage(),
-  ];
-
-  final List<String> _titles = ['首页', '记录', '统计', '预算'];
+/// Web 不支持提示页面
+class _WebNotSupportedScreen extends StatelessWidget {
+  const _WebNotSupportedScreen();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            activeIcon: Icon(Icons.home_outlined),
-            label: '首页',
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long),
-            activeIcon: Icon(Icons.receipt_long_outlined),
-            label: '记录',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
-            activeIcon: Icon(Icons.bar_chart_outlined),
-            label: '统计',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.account_balance_wallet),
-            activeIcon: Icon(Icons.account_balance_wallet_outlined),
-            label: '预算',
-          ),
-        ],
-      ),
-      floatingActionButton: _currentIndex == 0
-          ? null
-          : FloatingActionButton(
-              onPressed: () => Navigator.pushNamed(context, '/import_export'),
-              mini: true,
-              child: const Icon(Icons.cloud_upload),
+        ),
+        child: const Center(
+          child: Padding(
+            padding: EdgeInsets.all(32.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.phone_android,
+                  size: 80,
+                  color: Colors.white,
+                ),
+                SizedBox(height: 24),
+                Text(
+                  'YAccount',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Web 平台不支持',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '请在 Android 或 iOS 设备上运行',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
+      ),
     );
   }
 }

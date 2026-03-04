@@ -1,109 +1,77 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../database/database_helper.dart';
 
-/// 应用全局状态管理Provider
-class AppProvider with ChangeNotifier {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
-  
-  String _currentMonth = '';
-  int _selectedYear = DateTime.now().year;
-  int _selectedMonth = DateTime.now().month;
-  
-  bool _isInitialized = false;
-  bool _hasSetPassword = false;
+/// 全局应用状态Provider
+class AppProvider extends ChangeNotifier {
+  final DatabaseHelper _db = DatabaseHelper();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
-  // Getters
-  String get currentMonth => _currentMonth;
-  int get selectedYear => _selectedYear;
-  int get selectedMonth => _selectedMonth;
+  bool _isInitialized = false;
+  bool _isDbReady = false;
+  String? _password;
+  bool _isEncrypted = false;
+
   bool get isInitialized => _isInitialized;
-  bool get hasSetPassword => _hasSetPassword;
+  bool get isDbReady => _isDbReady;
+  bool get isEncrypted => _isEncrypted;
 
   /// 初始化应用
   Future<void> initialize() async {
-    await _loadCurrentMonth();
-    await _checkPasswordSet();
+    if (_isInitialized) return;
+
+    // 检查是否设置了密码
+    _password = await _secureStorage.read(key: 'db_password');
+    _isEncrypted = _password != null && _password!.isNotEmpty;
+
+    // 初始化数据库
+    await _initDatabase();
     _isInitialized = true;
     notifyListeners();
   }
 
-  /// 加载当前选择的月份
-  Future<void> _loadCurrentMonth() async {
-    final savedMonth = await _dbHelper.getSetting('selected_month');
-    if (savedMonth != null) {
-      final parts = savedMonth.split('-');
-      _selectedYear = int.parse(parts[0]);
-      _selectedMonth = int.parse(parts[1]);
+  /// 初始化数据库
+  Future<void> _initDatabase() async {
+    try {
+      await _db.reinitialize(password: _password);
+      _isDbReady = true;
+    } catch (e) {
+      // 如果加密数据库打开失败，尝试非加密模式
+      if (_isEncrypted) {
+        _isEncrypted = false;
+        _password = null;
+        await _secureStorage.delete(key: 'db_password');
+        await _db.reinitialize();
+        _isDbReady = true;
+      }
     }
-    _currentMonth = '$_selectedYear-$_selectedMonth';
   }
 
-  /// 保存当前选择的月份
-  Future<void> saveCurrentMonth(int year, int month) async {
-    _selectedYear = year;
-    _selectedMonth = month;
-    _currentMonth = '$year-$month';
-    
-    await _dbHelper.saveSetting('selected_month', _currentMonth);
-    notifyListeners();
-  }
-
-  /// 切换到上一个月
-  void previousMonth() {
-    if (_selectedMonth == 1) {
-      _selectedMonth = 12;
-      _selectedYear--;
-    } else {
-      _selectedMonth--;
-    }
-    saveCurrentMonth(_selectedYear, _selectedMonth);
-  }
-
-  /// 切换到下一个月
-  void nextMonth() {
-    if (_selectedMonth == 12) {
-      _selectedMonth = 1;
-      _selectedYear++;
-    } else {
-      _selectedMonth++;
-    }
-    saveCurrentMonth(_selectedYear, _selectedMonth);
-  }
-
-  /// 检查是否设置了密码
-  Future<void> _checkPasswordSet() async {
-    final hasPassword = await _dbHelper.getSetting('has_password');
-    _hasSetPassword = hasPassword == 'true';
-  }
-
-  /// 设置应用密码
+  /// 设置数据库密码（启用加密）
   Future<void> setPassword(String password) async {
-    // 这里应该将密码哈希后存储，简化示例
-    await _dbHelper.saveSetting('app_password', password);
-    await _dbHelper.saveSetting('has_password', 'true');
-    _hasSetPassword = true;
+    if (password.isEmpty) return;
+
+    _password = password;
+    _isEncrypted = true;
+
+    // 安全存储密码
+    await _secureStorage.write(key: 'db_password', value: password);
+
+    // 重新初始化数据库
+    await _db.reinitialize(password: password);
     notifyListeners();
   }
 
-  /// 验证密码
-  Future<bool> verifyPassword(String password) async {
-    final savedPassword = await _dbHelper.getSetting('app_password');
-    return savedPassword == password;
+  /// 清除密码（禁用加密）
+  Future<void> clearPassword() async {
+    _password = null;
+    _isEncrypted = false;
+
+    await _secureStorage.delete(key: 'db_password');
+    await _db.reinitialize();
+    notifyListeners();
   }
 
-  /// 获取应用设置
-  Future<String?> getSetting(String key) async {
-    return await _dbHelper.getSetting(key);
-  }
-
-  /// 保存应用设置
-  Future<void> saveSetting(String key, String value) async {
-    await _dbHelper.saveSetting(key, value);
-  }
-
-  @override
-  void dispose() {
-    _dbHelper.close();
-    super.dispose();
-  }
+  /// 获取数据库实例
+  DatabaseHelper get database => _db;
 }
