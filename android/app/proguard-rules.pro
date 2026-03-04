@@ -19,6 +19,11 @@
 -keep class org.apache.poi.** { *; }
 -keep class org.apache.xmlbeans.** { *; }
 
+# 忽略 Google Play Core 库的缺失类（Flutter 延迟组件）
+-dontwarn com.google.android.play.core.**
+-keep class com.google.android.play.core.** { *; }
+-keep interface com.google.android.play.core.** { *; }
+
 # 移除日志
 -assumenosideeffects class android.util.Log {
     public static *** d(...);

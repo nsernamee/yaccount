@@ -8,7 +8,7 @@ plugins {
 android {
     namespace = "com.yaccount.yaccount"
     compileSdk = flutter.compileSdkVersion
-    // ndkVersion = flutter.ndkVersion  // 暂时禁用NDK以避免下载问题
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -16,7 +16,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+        jvmTarget = "17"
     }
 
     defaultConfig {
@@ -28,6 +28,11 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // 只构建 arm64-v8a 架构，减小包体积
+        ndk {
+            abiFilters.addAll(listOf("arm64-v8a"))
+        }
     }
 
     buildTypes {
@@ -43,6 +48,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+
+            // 禁用符号剥离，避免 NDK 相关错误
+            packagingOptions {
+                jniLibs {
+                    useLegacyPackaging = true
+                }
+            }
         }
     }
 }

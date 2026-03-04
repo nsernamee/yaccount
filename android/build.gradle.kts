@@ -6,6 +6,13 @@ allprojects {
         google()
         mavenCentral()
     }
+
+    configurations.all {
+        resolutionStrategy {
+            // 强制使用指定版本的 NDK
+            force("com.android.ndk:ndk:27.0.12077973")
+        }
+    }
 }
 
 val newBuildDir: Directory =
