@@ -84,24 +84,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      floatingActionButton: _currentIndex == 0
-          ? FloatingActionButton.extended(
-              onPressed: () => _showAddTransaction(context),
-              icon: const Icon(Icons.add),
-              label: const Text('记账'),
-              backgroundColor: AppConstants.primaryColor,
-              foregroundColor: Colors.white,
-            )
-          : null,
-    );
-  }
-
-  void _showAddTransaction(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => const AddTransactionPage(),
     );
   }
 }
@@ -124,13 +106,16 @@ class _HomeContent extends StatelessWidget {
               child: _buildHeader(context),
             ),
             SliverToBoxAdapter(
+              child: _buildQuickActions(context),
+            ),
+            SliverToBoxAdapter(
               child: _buildStatistics(context),
             ),
             SliverToBoxAdapter(
               child: _buildBudgetProgress(context),
             ),
             SliverToBoxAdapter(
-              child: _buildQuickActions(context),
+              child: const SizedBox(height: 20),
             ),
           ],
         ),
