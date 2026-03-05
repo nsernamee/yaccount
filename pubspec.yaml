@@ -81,6 +81,16 @@ dev_dependencies:
   # 测试依赖
   sqflite_common_ffi: ^2.3.4+1
 
+  # 图标生成
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "C:/Users/YDC/Desktop/picture/blog用/IMG_20260305_191830.png"
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "C:/Users/YDC/Desktop/picture/blog用/IMG_20260305_191830.png"
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
