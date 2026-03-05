@@ -585,7 +585,7 @@ class _TransactionItemState extends State<_TransactionItem> {
                     ),
                   ),
                   Text(
-                    '${isExpense ? '-' : '+'}¥${AppConstants.formatAmount(widget.transaction.amount)}',
+                    '${isExpense ? '-' : '+'}¥${AppConstants.formatAmountRaw(widget.transaction.amount)}',
                     style: TextStyle(
                       color: color,
                       fontWeight: FontWeight.bold,
@@ -619,7 +619,7 @@ class _TransactionItemState extends State<_TransactionItem> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailRow('金额', '${AppConstants.formatAmount(widget.transaction.amount)} ${context.read<CurrencyManager>().current.symbol}'),
+                    _buildDetailRow('金额', '${AppConstants.formatAmountRaw(widget.transaction.amount)} ${context.read<CurrencyManager>().current.symbol}'),
                     const SizedBox(height: 8),
                     _buildDetailRow('类型', isExpense ? '支出' : '收入'),
                     const SizedBox(height: 8),

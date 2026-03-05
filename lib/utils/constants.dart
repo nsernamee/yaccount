@@ -53,6 +53,17 @@ class AppConstants {
     }
   }
 
+  /// 格式化金额，保留原始数值，使用千位分隔符（不四舍五入）
+  /// 超过百亿时使用Y单位
+  static String formatAmountRaw(double amount) {
+    if (amount.abs() >= 10000000000) {
+      // 百亿及以上，使用Y（亿）
+      return '${(amount / 100000000).toStringAsFixed(2)}Y';
+    }
+    final formatter = NumberFormat('#,##0.00');
+    return formatter.format(amount);
+  }
+
   /// 首页本月结余专用格式化函数，扩大显示范围
   /// 1万亿以上显示特殊文案，1亿以下使用千位分隔符，1亿及以上使用Y（亿）
   /// 注意：返回的字符串不包含符号，符号由调用处单独处理
