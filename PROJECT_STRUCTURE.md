@@ -1,659 +1,532 @@
-# YAccount 项目结构说明
+# YAccount 项目结构文档
 
-## 项目概述
+## 1. 项目概述
 
-**YAccount** 是一款本地记账应用，使用 Flutter 开发，数据存储在手机本地 SQLite 数据库中，支持 Android/iOS 平台。
+YAccount 是一款本地记账 Flutter 应用，支持 Android 和 iOS 平台，采用 SQLite 本地数据库存储数据，确保用户隐私安全。
+
+### 主要功能
+- 记账：支持支出/收入记录，分类管理
+- 统计：今日/本周/本月/本年收支统计，图表可视化
+- 预算：月度预算设置和进度跟踪
+- 导入导出：支持 CSV/Excel 格式数据导出和导入
+- 多货币：支持人民币、美元、欧元、英镑
+
+### 技术特点
+- 状态管理：Provider
+- 本地存储：SQLite (sqflite)
+- 图表：fl_chart
+- 数据格式：CSV、Excel
 
 ---
 
-## 目录结构
+## 2. 环境要求
+
+- Flutter SDK: ^3.11.1
+- Dart SDK: ^3.11.1
+- Android SDK: 最新稳定版
+- Xcode: 最新稳定版（iOS 开发用）
+
+---
+
+## 3. 项目目录结构
 
 ```
 yaccount/
 ├── lib/
-│   ├── main.dart                      # 应用入口
-│   ├── database/                      # 数据库层
-│   │   └── database_helper.dart       # 数据库操作封装
-│   ├── models/                        # 数据模型层
-│   │   ├── transaction_model.dart     # 交易记录模型
-│   │   ├── category_model.dart        # 分类模型
-│   │   └── budget_model.dart          # 预算模型
-│   ├── providers/                     # 状态管理层
-│   │   ├── app_provider.dart          # 应用全局状态
+│   ├── main.dart                 # 应用入口
+│   ├── database/
+│   │   └── database_helper.dart  # SQLite 数据库操作封装
+│   ├── models/
+│   │   ├── transaction_model.dart  # 交易记录模型
+│   │   ├── budget_model.dart       # 预算模型
+│   │   └── category_model.dart    # 分类模型
+│   ├── pages/
+│   │   ├── home_page.dart         # 首页（主页 + 导航）
+│   │   ├── add_transaction_page.dart  # 添加/编辑交易
+│   │   ├── history_page.dart      # 历史记录
+│   │   ├── statistics_page.dart   # 统计分析
+│   │   ├── budget_page.dart       # 预算管理
+│   │   ├── import_export_page.dart # 导入导出
+│   │   └── settings_page.dart    # 设置
+│   ├── providers/
+│   │   ├── app_provider.dart      # 应用全局状态
 │   │   ├── transaction_provider.dart  # 交易数据管理
-│   │   └── budget_provider.dart       # 预算数据管理
-│   ├── pages/                         # 页面层
-│   │   ├── home_page.dart             # 首页
-│   │   ├── add_transaction_page.dart  # 添加交易
-│   │   ├── history_page.dart          # 历史记录
-│   │   ├── statistics_page.dart       # 统计图表
-│   │   ├── budget_page.dart           # 预算管理
-│   │   ├── import_export_page.dart    # 导入导出
-│   │   └── settings_page.dart         # 设置
-│   ├── widgets/                       # 组件层
-│   │   ├── common_widgets.dart        # 通用组件
-│   │   └── category_selector.dart     # 分类选择器
-│   ├── utils/                         # 工具层
-│   │   ├── constants.dart              # 常量定义
-│   │   └── date_utils.dart            # 日期工具
-│   └── services/                      # 服务层(预留)
-├── android/                           # Android 平台配置
-├── ios/                               # iOS 平台配置
-├── pubspec.yaml                       # 依赖配置
-└── README.md                          # 项目说明
+│   │   └── budget_provider.dart   # 预算数据管理
+│   ├── utils/
+│   │   ├── constants.dart         # 常量配置（颜色、货币等）
+│   │   └── date_utils.dart        # 日期工具函数
+│   └── widgets/
+│       ├── common_widgets.dart     # 通用组件
+│       └── category_selector.dart  # 分类选择器
+├── android/                      # Android 平台配置
+├── ios/                          # iOS 平台配置
+├── pubspec.yaml                  # 项目依赖配置
+└── analysis_options.yaml         # 代码规范配置
 ```
 
 ---
 
-## 技术栈
+## 4. 依赖配置 (pubspec.yaml)
 
-| 类别 | 技术 | 用途 |
-|------|------|------|
-| **框架** | Flutter 3.x | 跨平台开发 |
-| **数据库** | sqflite + sqflite_sqlcipher | 本地数据存储 |
-| **状态管理** | Provider | 全局状态管理 |
-| **图表** | fl_chart | 数据可视化 |
-| **文件处理** | path_provider, file_picker, share_plus | 文件路径、选择、分享 |
-| **数据处理** | csv, excel, intl, uuid | 数据解析、格式化 |
-| **安全** | crypto, flutter_secure_storage | 数据加密 |
-| **UI组件** | flutter_slidable | 滑动操作 |
+### 核心依赖
 
----
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
-## 各模块实现说明
+  # 数据库
+  sqflite: ^2.4.2           # SQLite 数据库
+  path: ^1.9.1              # 路径处理
 
-### 1. 数据库层 (database/)
+  # 状态管理
+  provider: ^6.1.2          # Provider 状态管理
 
-#### `database_helper.dart`
+  # 图表
+  fl_chart: ^0.70.2         # 图表库
 
-**职责**: 封装所有数据库操作
+  # 文件处理
+  path_provider: ^2.1.5      # 应用目录访问
+  share_plus: ^10.1.4        # 系统分享
+  file_picker: ^8.3.7        # 文件选择
 
-**核心功能**:
-- 单例模式管理数据库连接
-- 创建/升级数据库表结构
-- 提供 CRUD 操作接口
-- 支持数据库加密(可选)
-- 复杂的聚合查询统计
+  # 数据处理
+  csv: ^6.0.0               # CSV 解析
+  excel: ^4.0.6             # Excel 处理
+  intl: ^0.20.2             # 国际化数字/日期格式
+  uuid: ^4.5.1              # UUID 生成
 
-**数据库表结构**:
+  # 安全
+  crypto: ^3.0.6             # 加密（用于数据库密钥派生）
+  flutter_secure_storage: ^9.2.4  # 安全存储
 
-```sql
--- 交易记录表 (transactions)
-CREATE TABLE transactions (
-  id TEXT PRIMARY KEY,
-  amount REAL NOT NULL,
-  type TEXT NOT NULL,           -- 'expense' 或 'income'
-  category TEXT NOT NULL,       -- 分类ID
-  note TEXT,                    -- 备注
-  date TEXT NOT NULL,           -- 日期 (YYYY-MM-DD)
-  created_at TEXT NOT NULL      -- 创建时间
-);
+  # UI
+  flutter_slidable: ^3.1.2   # 滑动操作组件
+  shared_preferences: ^2.3.5 # 轻量级存储
 
--- 索引优化查询性能
-CREATE INDEX idx_transaction_date ON transactions(date);
-CREATE INDEX idx_transaction_type ON transactions(type);
-CREATE INDEX idx_transaction_category ON transactions(category);
-
--- 预算表 (budgets)
-CREATE TABLE budgets (
-  id TEXT PRIMARY KEY,
-  category TEXT NOT NULL,       -- 分类ID (总预算为 'total')
-  amount REAL NOT NULL,         -- 预算金额
-  month INTEGER NOT NULL,       -- 月份 (YYYYMM 格式)
-  created_at TEXT NOT NULL,     -- 创建时间
-  UNIQUE(category, month)       -- 唯一约束
-);
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  sqflite_common_ffi: ^2.3.4+1  # 测试用
 ```
 
-**关键方法**:
-- `database`: 获取数据库实例(单例)
-- `_initDatabase()`: 初始化数据库
-- `_onCreate()`: 创建表结构
-- `_onUpgrade()`: 升级数据库版本
-- `insertTransaction()`: 插入交易记录
-- `updateTransaction()`: 更新交易记录
-- `deleteTransaction()`: 删除交易记录
-- `getTransactions()`: 查询交易记录(支持分页)
-- `getStatistics()`: 获取指定日期范围统计
-- `getYearStatistics()`: 获取年度统计
-- `getCategoryStatistics()`: 获取分类统计(饼图用)
-- `getMonthlyStatistics()`: 获取月度统计(柱状图用)
-- `getDailyExpenseTrend()`: 获取每日支出趋势(折线图用)
-- `setTotalBudget()`: 设置总预算
-- `setCategoryBudget()`: 设置分类预算
-- `getBudgets()`: 获取预算列表
-
 ---
 
-### 2. 数据模型层 (models/)
+## 5. 数据模型
 
-#### `transaction_model.dart`
-
-**用途**: 定义交易记录的数据结构
+### 5.1 交易记录 (TransactionModel)
 
 ```dart
 class TransactionModel {
-  final String id;              // UUID 唯一标识
-  final double amount;          // 金额
-  final String type;            // 'expense' 或 'income'
-  final String category;        // 分类ID
-  final String? note;           // 备注
-  final DateTime date;          // 交易日期
-  final DateTime createdAt;     // 创建时间
-
-  // 序列化方法
-  Map<String, dynamic> toMap()
-  factory TransactionModel.fromMap(Map<String, dynamic> map)
-  // 复制方法
-  TransactionModel copyWith(...)
+  final String id;           // UUID 唯一标识
+  final double amount;       // 金额
+  final String type;         // 'expense' 或 'income'
+  final String category;     // 分类 ID
+  final String? note;        // 备注（可选）
+  final DateTime date;       // 交易日期
+  final DateTime createdAt;  // 创建时间
 }
 ```
 
-#### `category_model.dart`
-
-**用途**: 定义分类数据结构，包含支出分类和收入分类
-
-```dart
-class CategoryModel {
-  final String id;              // 分类ID
-  final String name;             // 分类名称
-  final String icon;            // 图标名称
-  final int colorValue;         // 颜色值
-
-  // 预设分类
-  static List<CategoryModel> categories
-}
-
-// 支出分类: 餐饮、交通、购物、娱乐、医疗、教育、住房
-// 收入分类: 工资、投资、其他
-```
-
-#### `budget_model.dart`
-
-**用途**: 定义预算数据结构
+### 5.2 预算 (BudgetModel)
 
 ```dart
 class BudgetModel {
-  final String id;              // UUID 唯一标识
-  final String category;        // 分类ID ('total' 表示总预算)
-  final double amount;          // 预算金额
-  final int month;              // 月份 (YYYYMM 格式)
-  final DateTime createdAt;     // 创建时间
-
-  Map<String, dynamic> toMap()
-  factory BudgetModel.fromMap(Map<String, dynamic> map)
+  final String id;           // UUID 唯一标识
+  final String category;     // 分类 ID（'total' 表示总预算）
+  final double amount;       // 预算金额
+  final int month;           // 月份（1-12）
+  final DateTime createdAt;  // 创建时间
 }
 ```
 
----
+### 5.3 分类 (CategoryModel)
 
-### 3. 状态管理层 (providers/)
-
-#### `app_provider.dart`
-
-**职责**: 管理应用全局状态
-
-**状态**:
-- `isInitialized`: 应用是否初始化完成
-- `isDbReady`: 数据库是否就绪
-- `appPassword`: 应用密码
-- `isPasswordSet`: 是否设置密码
-
-**方法**:
-- `initialize()`: 初始化应用
-- `setPassword()`: 设置密码
-- `verifyPassword()`: 验证密码
-- `clearPassword()`: 清除密码
-
----
-
-#### `transaction_provider.dart`
-
-**职责**: 管理交易数据和处理统计计算
-
-**状态**:
-- `transactions`: 交易列表(分页)
-- `isLoading`: 加载状态
-- `hasMore`: 是否还有更多数据
-- `todayStats`: 今日统计 {income, expense}
-- `weekStats`: 本周统计 {income, expense}
-- `monthStats`: 本月统计 {income, expense}
-- `yearStats`: 本年统计 {income, expense}
-
-**方法**:
-- `initialize()`: 初始化并加载数据
-- `loadTransactions()`: 加载交易记录(分页)
-- `loadMore()`: 加载更多(分页)
-- `refresh()`: 刷新数据
-- `loadStatistics()`: 加载统计数据
-- `addTransaction()`: 添加交易
-- `updateTransaction()`: 更新交易
-- `deleteTransaction()`: 删除交易
-- `importTransactions()`: 批量导入交易
-- `getAllTransactions()`: 获取所有交易(用于导出)
-- `getCategoryStats()`: 获取分类统计(饼图用)
-- `getMonthlyStats()`: 获取月度统计(柱状图用)
-- `getDailyTrend()`: 获取每日支出趋势(折线图用)
-- `getYearlyStats()`: 获取年度统计
-- `getYearlyMonthlyTrend()`: 获取年度月度趋势
-
----
-
-#### `budget_provider.dart`
-
-**职责**: 管理预算数据
-
-**状态**:
-- `budgets`: 分类预算列表
-- `totalBudget`: 总预算
-- `currentMonth`: 当前月份
-
-**方法**:
-- `loadBudgets()`: 加载指定月份预算
-- `setTotalBudget()`: 设置总预算
-- `setCategoryBudget()`: 设置分类预算
-- `deleteBudget()`: 删除预算
-- `calculateUsageRate()`: 计算使用率
-- `getUsageColor()`: 获取使用率颜色
-
----
-
-### 4. 页面层 (pages/)
-
-#### `home_page.dart` - 首页
-
-**功能**:
-- 展示本月结余(收入-支出)，负数显示红色
-- 显示今日/本周/本月收支统计卡片
-- 展示最近交易列表
-- 快捷添加交易按钮(FloatingActionButton)
-- 底部导航栏：首页、统计、预算、设置
-
-**UI组件**:
-- `StatCardRow`: 行统计卡片容器
-- `StatCard`: 统计卡片(金额自动缩放字体)
-- `BudgetProgressBar`: 预算进度条
-- `TransactionListItem`: 交易列表项
-
----
-
-#### `add_transaction_page.dart` - 添加交易
-
-**功能**:
-- 切换支出/收入类型
-- 输入金额(数字键盘)
-- 选择分类(网格布局)
-- 输入备注(可选)
-- 选择日期(默认今天)
-- 保存交易
-
-**UI组件**:
-- 类型切换 Tab (支出/收入)
-- 大数字金额输入框
-- 分类选择器网格
-- 日期选择器
-- 保存按钮
-
----
-
-#### `history_page.dart` - 历史记录
-
-**功能**:
-- 按日期分组显示交易记录
-- 分页加载(每次20条)
-- 滑动删除交易
-- 编辑交易
-- 筛选功能(全部/支出/收入)
-
-**UI组件**:
-- 按日期分组的列表
-- `Slidable` 滑动操作
-- 加载更多指示器
-- 空状态组件
-
----
-
-#### `statistics_page.dart` - 统计图表
-
-**功能**:
-- 月份选择器
-- 饼图: 支出分类占比
-- 柱状图: 近6个月收支对比
-- 折线图: 当月每日支出趋势
-
-**UI组件**:
-- TabBar 切换视图
-- `PieChart`: 饼图
-- `BarChart`: 柱状图
-- `LineChart`: 折线图
-- 月份选择器
-
----
-
-#### `budget_page.dart` - 预算管理
-
-**功能**:
-- 月份选择器
-- 设置/编辑月度总预算
-- 设置/编辑分类预算
-- 查看预算使用率(百分比显示)
-- 进度条可视化
-- 删除分类预算
-
-**UI组件**:
-- 月份切换器
-- 总预算卡片(渐变色背景)
-- 分类预算卡片列表
-- `BudgetProgressBar`: 进度条
-- 添加/编辑/删除按钮
-
----
-
-#### `import_export_page.dart` - 导入导出
-
-**功能**:
-- 导出为 CSV 文件
-- 导出为 Excel 文件
-- 导入 CSV 文件
-- 导入 Excel 文件
-- 数据增量/覆盖选项
-
-**UI组件**:
-- 导出按钮组
-- 文件选择器
-- 导入选项单选框
-- 进度指示器
-
----
-
-#### `settings_page.dart` - 设置
-
-**功能**:
-- 设置/修改应用密码
-- 开启/关闭密码保护
-- 清空所有数据
-- 查看关于信息
-
-**UI组件**:
-- 设置项列表
-- 密码输入对话框
-- 确认对话框
-
----
-
-### 5. 组件层 (widgets/)
-
-#### `common_widgets.dart`
-
-**通用组件**:
-- `StatCardRow`: 统一高度的行统计卡片容器
-- `StatCard`: 统计卡片(根据金额长度自动调整字体大小)
-- `BudgetProgressBar`: 预算进度条组件
-- `EmptyState`: 空状态组件
-- `LoadMoreIndicator`: 加载更多指示器
-
-**实现细节**:
-- `StatCard` 根据金额长度动态计算字体大小(14-20px)
-- `BudgetProgressBar` 根据使用率显示不同颜色(绿/黄/红)
-
-#### `category_selector.dart`
-
-**分类选择器**:
-- 网格布局展示分类(3列)
-- 显示分类图标和名称
-- 支持选中状态高亮
-- 支出和收入分类分别显示
-
----
-
-### 6. 工具层 (utils/)
-
-#### `constants.dart`
-
-**常量定义**:
 ```dart
-class AppConstants {
-  // 主题色
-  static const Color primaryColor = Color(0xFF6C5CE7);
-  static const Color expenseColor = Color(0xFFE17055);
-  static const Color incomeColor = Color(0xFF00B894);
-  static const Color backgroundColor = Color(0xFFF8F9FA);
-  
-  // 预算颜色
-  static const Color budgetGreen = Color(0xFF00B894);
-  static const Color budgetYellow = Color(0xFFFDCB6E);
-  static const Color budgetRed = Color(0xFFE17055);
-  
-  // 图表颜色列表
-  static const List<Color> chartColors = [...];
-}
-
-class TransactionType {
-  static const String expense = 'expense';
-  static const String income = 'income';
+class CategoryModel {
+  final String id;           // 分类 ID
+  final String name;         // 分类名称
+  final String icon;         // 图标名称
+  final int colorValue;      // 颜色值
 }
 ```
 
-#### `date_utils.dart`
+### 默认分类
 
-**日期工具函数**:
-- `fromMonthInt(int month)`: 将 YYYYM 转换为 DateTime
-- `formatMonth(DateTime date)`: 格式化月份为 "YYYY年MM月"
-- `getMonthStart(DateTime date)`: 获取月份第一天
-- `getMonthEnd(DateTime date)`: 获取月份最后一天
+**支出分类：**
+| ID | 名称 | 图标 | 颜色 |
+|----|------|------|------|
+| food | 餐饮 | restaurant | #FF6B6B |
+| transport | 出行 | directions_car | #4ECDC4 |
+| shopping | 消费 | shopping_bag | #FFE66D |
+| housing | 居家 | home | #FCBAD3 |
+| other | 其他 | more_horiz | #636E72 |
 
----
-
-### 7. 应用入口 (main.dart)
-
-**职责**:
-- 应用初始化
-- 配置主题
-- 配置多语言
-- 启动画面
-
-**结构**:
-```
-void main() → 初始化系统UI → 运行应用
-  └── YAccountApp
-      └── MultiProvider (状态管理)
-          ├── AppProvider
-          ├── TransactionProvider
-          └── BudgetProvider
-      └── MaterialApp
-          ├── 主题配置
-          └── 本地化配置
-          └── _AppWrapper (初始化包装器)
-              ├── _SplashScreen (启动画面)
-              └── HomePage (首页)
-```
+**收入分类：**
+| ID | 名称 | 图标 | 颜色 |
+|----|------|------|------|
+| salary | 薪资 | account_balance_wallet | #6C5CE7 |
+| investment | 理财 | trending_up | #00B894 |
 
 ---
 
-## 数据流向
+## 6. 数据库设计
 
-### 1. 添加交易流程
+### 6.1 数据库配置
 
-```
-用户输入数据
-    ↓
-AddTransactionPage (收集数据)
-    ↓
-TransactionProvider.addTransaction()
-    ↓
-DatabaseHelper.insertTransaction()
-    ↓
-SQLite Database (存储)
-    ↓
-TransactionProvider 通知更新
-    ↓
-UI 自动刷新
-```
+- 数据库名称：`yaccount.db`
+- 数据库版本：`1`
+- 数据库文件位置：应用文档目录
 
-### 2. 统计查询流程
+### 6.2 表结构
 
-```
-HomePage/StatisticsPage 请求数据
-    ↓
-TransactionProvider.loadStatistics() / getCategoryStats()
-    ↓
-DatabaseHelper.getStatistics() / getCategoryStatistics()
-    ↓
-SQLite Database (聚合查询)
-    ↓
-返回统计结果
-    ↓
-UI 展示图表
+#### transactions（交易记录表）
+
+```sql
+CREATE TABLE transactions (
+  id TEXT PRIMARY KEY,           -- UUID
+  amount REAL NOT NULL,         -- 金额
+  type TEXT NOT NULL,           -- 'expense' 或 'income'
+  category TEXT NOT NULL,       -- 分类 ID
+  note TEXT,                    -- 备注
+  date TEXT NOT NULL,           -- 日期 (yyyy-MM-dd)
+  created_at TEXT NOT NULL      -- 创建时间 (ISO8601)
+);
+
+-- 索引
+CREATE INDEX idx_transaction_date ON transactions(date);
+CREATE INDEX idx_transaction_type ON transactions(type);
+CREATE INDEX idx_transaction_category ON transactions(category);
 ```
 
-### 3. 预算管理流程
+#### budgets（预算表）
 
+```sql
+CREATE TABLE budgets (
+  id TEXT PRIMARY KEY,           -- UUID
+  category TEXT NOT NULL,        -- 分类 ID 或 'total'
+  amount REAL NOT NULL,          -- 预算金额
+  month INTEGER NOT NULL,        -- 月份
+  created_at TEXT NOT NULL,      -- 创建时间
+  UNIQUE(category, month)        -- 分类和月份唯一约束
+);
 ```
-BudgetPage 请求预算
-    ↓
-BudgetProvider.loadBudgets()
-    ↓
-DatabaseHelper.getBudgets()
-    ↓
-计算使用率
-    ↓
-UI 显示进度条
+
+#### categories（分类表）
+
+```sql
+CREATE TABLE categories (
+  id TEXT PRIMARY KEY,           -- 分类 ID
+  name TEXT NOT NULL,           -- 分类名称
+  icon TEXT NOT NULL,            -- 图标名称
+  color_value INTEGER NOT NULL   -- 颜色值
+);
+```
+
+#### settings（设置表）
+
+```sql
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,          -- 设置键
+  value TEXT NOT NULL            -- 设置值
+);
 ```
 
 ---
 
-## 性能优化措施
+## 7. 核心模块说明
 
-1. **数据库索引**: 为 `transactions.date`、`type`、`category` 字段建立索引，加速查询
-2. **分页加载**: 历史记录每次加载20条，避免一次性加载大量数据
-3. **异步初始化**: 数据库异步初始化，不阻塞UI启动
-4. **数据聚合**: 统计查询使用 SQL GROUP BY，减少数据传输量
-5. **图表优化**: 图表数据预聚合，减少渲染压力
-6. **字体动态缩放**: 统计卡片根据金额长度自动调整字体，避免溢出
+### 7.1 入口文件 (main.dart)
+
+**功能：** 应用启动入口，初始化和配置
+
+**主要职责：**
+- 初始化 Flutter 绑定
+- 配置系统 UI（状态栏、屏幕方向）
+- 设置 MultiProvider 全局状态管理
+- 配置 MaterialApp（主题、本地化）
+- 处理启动画面和初始化流程
+
+**关键代码结构：**
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  SystemChrome.setSystemUIOverlayStyle(...);
+  SystemChrome.setPreferredOrientations([...]);
+  runApp(const YAccountApp());
+}
+
+class YAccountApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AppProvider()..initialize()),
+        ChangeNotifierProvider(create: (_) => TransactionProvider()),
+        ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => CurrencyManager.instance),
+      ],
+      child: MaterialApp(
+        // 主题配置
+        // 本地化配置
+        home: const _AppWrapper(),
+      ),
+    );
+  }
+}
+```
+
+### 7.2 数据库操作 (database_helper.dart)
+
+**功能：** SQLite 数据库的 CRUD 操作封装
+
+**主要职责：**
+- 单例模式管理数据库连接
+- 交易记录的增删改查
+- 预算管理
+- 统计数据查询
+- 设置存储
+
+**核心方法：**
+```dart
+class DatabaseHelper {
+  static final DatabaseHelper _instance = DatabaseHelper._internal();
+  
+  // 获取数据库实例
+  Future<Database> get database async {...}
+  
+  // 交易 CRUD
+  Future<int> insertTransaction(TransactionModel transaction);
+  Future<List<TransactionModel>> getTransactions({int page, int pageSize, String? type, DateTime? startDate, DateTime? endDate});
+  Future<int> updateTransaction(TransactionModel transaction);
+  Future<int> deleteTransaction(String id);
+  Future<void> insertTransactionsBatch(List<TransactionModel> transactions);  // 批量插入（事务优化）
+  
+  // 统计查询
+  Future<Map<String, double>> getStatistics({required DateTime startDate, required DateTime endDate});
+  Future<Map<String, double>> getCategoryStatistics({...});
+  Future<List<Map<String, dynamic>>> getMonthlyStatistics(int months);
+  Future<Map<String, double>> getDailyExpenseTrend({...});
+  
+  // 预算 CRUD
+  Future<void> setBudget(BudgetModel budget);
+  Future<BudgetModel?> getBudget(int month, {String? category});
+  Future<List<BudgetModel>> getBudgets(int month);
+}
+```
+
+### 7.3 状态管理 (providers/)
+
+**AppProvider：** 应用全局状态
+- 数据库就绪状态
+- 初始化完成状态
+
+**TransactionProvider：** 交易数据管理
+- 交易列表管理（分页加载）
+- 统计数据（今日/本周/本月/本年）
+- 增删改查操作
+- 批量导入
+
+**BudgetProvider：** 预算数据管理
+- 预算设置
+- 预算进度计算
+
+**CurrencyManager：** 货币管理
+- 当前货币切换
+- 货币偏好持久化（SharedPreferences）
+
+### 7.4 页面模块 (pages/)
+
+| 页面 | 功能 |
+|------|------|
+| home_page.dart | 首页，包含底部导航和主页内容（收支概览、快速记账、预算进度） |
+| add_transaction_page.dart | 添加/编辑交易记录 |
+| history_page.dart | 历史记录列表，支持分页加载和筛选 |
+| statistics_page.dart | 统计分析，饼图、柱状图、折线图 |
+| budget_page.dart | 预算管理，设置月度预算 |
+| import_export_page.dart | 数据导入导出（CSV/Excel） |
+| settings_page.dart | 设置页面 |
+
+### 7.5 工具函数 (utils/)
+
+**constants.dart：**
+- 主题颜色配置
+- 金额格式化函数（`formatAmount`、`formatAmountRaw`、`formatAmountCompact`）
+- 货币类定义
+- 货币管理器
+
+**date_utils.dart：**
+- 日期格式化
+- 日期计算
 
 ---
 
-## 数据安全
+## 8. 实现方法详解
 
-1. **数据库加密**: 使用 `sqflite_sqlcipher` 支持数据库加密
-2. **密码保护**: 应用密码通过 SHA256 派生为数据库密钥
-3. **无网络权限**: Android/iOS 均不申请网络权限
-4. **数据隔离**: 数据存储在应用私有目录，其他应用无法访问
+### 8.1 状态管理
+
+采用 **Provider** 方案，使用 `ChangeNotifier` 实现响应式状态管理。
+
+```dart
+// 在 main.dart 中配置
+MultiProvider(
+  providers: [
+    ChangeNotifierProvider(create: (_) => TransactionProvider()),
+    // ...
+  ],
+  child: MyApp(),
+)
+
+// 在页面中使用
+Consumer<TransactionProvider>(
+  builder: (context, provider, _) {
+    return Text('${provider.monthStats['expense']}');
+  },
+)
+```
+
+### 8.2 分页加载
+
+历史记录采用分页加载优化性能：
+
+```dart
+// TransactionProvider 中
+static const int _pageSize = 20;
+Future<void> loadTransactions({bool refresh = false, ...}) async {
+  if (refresh) {
+    _currentPage = 0;
+    _transactions = [];
+  }
+  final newTransactions = await _db.getTransactions(
+    page: _currentPage,
+    pageSize: _pageSize,
+    ...
+  );
+  _transactions.addAll(newTransactions);
+  _currentPage++;
+}
+```
+
+### 8.3 数据导入导出
+
+**导出流程：**
+1. 从数据库获取所有交易记录
+2. 转换为 CSV/Excel 格式
+3. 保存到应用文档目录
+4. 用户选择保存或分享
+
+**导入流程：**
+1. 用户选择 CSV/Excel 文件
+2. 解析文件内容
+3. 显示导入模式选择（增量追加/覆盖替换）
+4. 批量插入数据库
+
+**分类映射：**
+```dart
+String _mapCategory(String category) {
+  final mapping = {
+    '餐饮': 'food',
+    '出行': 'transport',
+    '消费': 'shopping',
+    '居家': 'housing',
+    '薪资': 'salary',
+    '理财': 'investment',
+    '其他': 'other',
+  };
+  return mapping[category] ?? category;
+}
+```
+
+### 8.4 金额格式化
+
+提供三种格式化函数：
+
+| 函数 | 用途 | 规则 |
+|------|------|------|
+| `formatAmount` | 通用格式化 | 1000+，显示 K/M/Y |
+| `formatAmountRaw` | 历史记录显示 | 保留原始数值，千位分隔符 |
+| `formatAmountCompact` | 首页结余 | 1万亿+显示特殊文案 |
+
+### 8.5 图表实现
+
+使用 **fl_chart** 库：
+
+- **饼图 (PieChart)：** 分类支出占比
+- **柱状图 (BarChart)：** 月度收支对比
+- **折线图 (LineChart)：** 每日/每月支出趋势
 
 ---
 
-## 总结
+## 9. 关键技术选型
 
-YAccount 采用清晰的分层架构:
-
-- **数据库层**: 负责数据持久化
-- **模型层**: 定义数据结构
-- **状态管理层**: 管理业务逻辑
-- **页面层**: 负责UI展示
-- **组件层**: 可复用UI组件
-- **工具层**: 辅助功能
-
-各层职责明确，便于维护和扩展。
+| 技术 | 选型 | 理由 |
+|------|------|------|
+| 状态管理 | Provider | 简单易用，官方推荐 |
+| 数据库 | sqflite | SQLite 本地存储，离线可用，保护隐私 |
+| 图表 | fl_chart | 功能丰富，性能好 |
+| 导入导出 | csv + excel | 通用格式，方便用户 |
+| 国际化 | flutter_localizations | 官方支持 |
 
 ---
 
-## iOS 构建指南
+## 10. 运行和构建命令
 
-### 平台支持说明
-
-Flutter 支持跨平台开发，但 iOS 的编译只能在 macOS 环境下进行。Windows 和 Linux 用户无法直接在本地构建 iOS 应用。
-
-### 构建方案
-
-#### 方案一：本地构建（仅限 macOS）
-
-**环境要求：**
-- macOS 10.14 或更高版本
-- Xcode 12.0 或更高版本
-- Flutter SDK 3.16.0+
-- CocoaPods
-
-**构建步骤：**
+### 10.1 开发运行
 
 ```bash
-# 1. 进入项目目录
-cd yaccount
-
-# 2. 安装依赖
+# 获取依赖
 flutter pub get
 
-# 3. 检查可用设备
-flutter devices
+# 运行应用
+flutter run
+```
 
-# 4. 运行到 iOS 模拟器
-flutter run -d "iPhone 16 Pro"
+### 10.2 构建 APK
 
-# 5. 构建 release 版本
+```bash
+# Debug 包
+flutter build apk --debug
+
+# Release 包
+flutter build apk --release
+```
+
+### 10.3 构建 iOS
+
+```bash
+# iOS 模拟器
+flutter build ios --simulator --no-codesign
+
+# iOS 真机（需要签名）
 flutter build ios --release
 ```
 
-#### 方案二：云构建服务（推荐）
+### 10.4 输出路径
 
-Windows 用户可使用云端 Mac 进行构建：
+- Android: `build/app/outputs/flutter-apk/app-release.apk`
+- iOS: `build/ios/iphoneos/Runner.app`
 
-| 服务 | 说明 | 费用 |
-|------|------|------|
-| **Cloud Studio** | 腾讯云云端开发环境，有Mac节点 | 有免费额度 |
-| **Codematic** | 支持iOS云构建 | 按量计费 |
-| **GitHub Actions** | CI/CD构建iOS | 免费额度 |
+---
 
-**Cloud Studio 构建示例：**
+## 11. 版本信息
 
-1. 访问 Cloud Studio 并登录
-2. 创建新工作空间，选择 macOS 镜像
-3. 克隆项目：`git clone <your-repo-url>`
-4. 执行构建：
-   ```bash
-   cd yaccount
-   flutter pub get
-   flutter build ios --release
-   ```
+当前版本：**1.2.0+5**
 
-#### 方案三：仅使用 Android
+版本格式：`major.minor.patch+build`
 
-项目已完整支持 Android，无需 iOS 时可直接构建 Android APK：
+- major：主版本号
+- minor：次版本号  
+- patch：补丁版本号
+- build：构建号
 
-```bash
-# 构建 Android APK
-flutter build apk --release
+---
 
-# APK 位置：build/app/outputs/flutter-apk/app-release.apk
-```
+## 12. 注意事项
 
-### iOS 配置说明
-
-项目已包含基础 iOS 配置：
-
-| 配置项 | 文件 | 状态 |
-|--------|------|------|
-| 应用名称 | `ios/Runner/Info.plist` | ✅ 已配置 |
-| 包标识符 | `ios/Runner/Info.plist` | ✅ 使用默认 |
-| 竖屏支持 | `ios/Runner/Info.plist` | ✅ 已配置 |
-| 启动画面 | `ios/Runner/LaunchScreen.storyboard` | ✅ 已配置 |
-| App Icon | `ios/Runner/Assets.xcassets` | ✅ 占位图已有 |
-
-### 发布到 App Store
-
-1. **配置签名证书**（在 Xcode 中）
-2. **设置 App Store Connect**
-3. **构建 Archive**：
-   ```bash
-   flutter build ios --release --analyze-time
-   ```
-4. **使用 Xcode 上传**：Organizer → Upload to App Store
-
-### 常见问题
-
-**Q: Windows 能构建 iOS 吗？**
-> 不能，iOS 编译必须使用 macOS 或云构建服务。
-
-**Q: 模拟器无法启动？**
-> 打开 macOS 自带 Simulator：`open -a Simulator`
-
-**Q: 构建失败？**
-> 清理缓存：`flutter clean && flutter pub get && cd ios && pod install`
+1. **数据库加密**：当前版本未启用加密（如需启用，可使用 `sqflite_sqlcipher` 替代 `sqflite`）
+2. **Web 平台**：不支持 Web 平台，运行时会有相应提示
+3. **网络访问**：导入导出功能不依赖网络，纯本地操作
+4. **数据备份**：建议定期使用导入导出功能备份数据
