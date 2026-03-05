@@ -23,11 +23,20 @@ class StatisticsPage extends StatefulWidget {
 class _StatisticsPageState extends State<StatisticsPage> {
   late DateTime _selectedDate;
   ViewMode _viewMode = ViewMode.monthly;
+  late PageController _pieChartPageController;
+  int _currentPiePage = 0;
 
   @override
   void initState() {
     super.initState();
     _selectedDate = DateTime.now();
+    _pieChartPageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pieChartPageController.dispose();
+    super.dispose();
   }
 
   @override
@@ -256,6 +265,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   Widget _buildPieChart() {
     return Container(
+      height: 270,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -271,33 +281,95 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '支出分类',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          // 支出/收入切换
+          Expanded(
+            child: IndexedStack(
+              index: _currentPiePage,
+              children: [
+                // 支出分类
+                _buildPieChartContent('支出分类', _getCategoryStats(type: 'expense')),
+                // 收入分类
+                _buildPieChartContent('收入分类', _getCategoryStats(type: 'income')),
+              ],
+            ),
           ),
-          const SizedBox(height: 16),
-          FutureBuilder<Map<String, double>>(
-            future: _getCategoryStats(),
-            builder: (context, snapshot) {
-              if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const SizedBox(
-                  height: 200,
-                  child: Center(child: Text('暂无数据')),
-                );
-              }
+        ],
+      ),
+    );
+  }
 
-              final data = snapshot.data!;
-              final total = data.values.fold(0.0, (a, b) => a + b);
+  Widget _buildTypeButton(String label, int index) {
+    final isSelected = _currentPiePage == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _currentPiePage = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: isSelected ? AppConstants.primaryColor : Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : AppConstants.textSecondary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
 
-              return SizedBox(
+  Widget _buildPieChartContent(String title, Future<Map<String, double>> dataFuture) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 标题和切换按钮在同一行
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Row(
+              children: [
+                _buildTypeButton('支出', 0),
+                const SizedBox(width: 8),
+                _buildTypeButton('收入', 1),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        FutureBuilder<Map<String, double>>(
+          future: dataFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return const SizedBox(
                 height: 200,
-                child: Row(
-                  children: [
-                    Expanded(
+                child: Center(child: Text('暂无数据')),
+              );
+            }
+
+            final data = snapshot.data!;
+            final total = data.values.fold(0.0, (a, b) => a + b);
+
+            return SizedBox(
+              height: 190,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Center(
+                    child: SizedBox(
+                      width: 220,
                       child: PieChart(
                         PieChartData(
-                          sectionsSpace: 2,
-                          centerSpaceRadius: 40,
+                          sectionsSpace: 1,
+                          centerSpaceRadius: 25,
                           sections: data.entries.map((entry) {
                             final index = data.keys.toList().indexOf(entry.key);
                             final color = AppConstants.chartColors[
@@ -305,10 +377,10 @@ class _StatisticsPageState extends State<StatisticsPage> {
                             return PieChartSectionData(
                               value: entry.value,
                               color: color,
-                              radius: 50,
+                              radius: 45,
                               title: '${(entry.value / total * 100).toStringAsFixed(0)}%',
                               titleStyle: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -317,47 +389,55 @@ class _StatisticsPageState extends State<StatisticsPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: data.entries.map((entry) {
-                        final index = data.keys.toList().indexOf(entry.key);
-                        final color = AppConstants.chartColors[
-                            index % AppConstants.chartColors.length];
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 12,
-                                height: 12,
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  shape: BoxShape.circle,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    flex: 1,
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: data.entries.map((entry) {
+                          final index = data.keys.toList().indexOf(entry.key);
+                          final color = AppConstants.chartColors[
+                              index % AppConstants.chartColors.length];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _getCategoryName(entry.key),
-                                style: const TextStyle(fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _getCategoryName(entry.key),
+                                    style: const TextStyle(fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
                     ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ],
-      ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
-  Future<Map<String, double>> _getCategoryStats() async {
+  Future<Map<String, double>> _getCategoryStats({String type = 'expense'}) async {
     final provider = context.read<TransactionProvider>();
 
     if (_viewMode == ViewMode.monthly) {
@@ -366,7 +446,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       return await provider.getCategoryStats(
         startDate: startDate,
         endDate: endDate,
-        type: 'expense',
+        type: type,
       );
     } else {
       // 年度视图：统计全年分类支出
@@ -375,7 +455,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       return await provider.getCategoryStats(
         startDate: startDate,
         endDate: endDate,
-        type: 'expense',
+        type: type,
       );
     }
   }
