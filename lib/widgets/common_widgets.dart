@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../utils/constants.dart';
 
 /// 统一高度的一行统计卡片
@@ -41,71 +42,76 @@ class StatCard extends StatelessWidget {
     required this.icon,
   });
 
-  // 根据金额长度动态计算字体大小
-  double _getAmountFontSize() {
-    final amountStr = '¥${amount.toStringAsFixed(2)}';
-
-    if (amountStr.length <= 8) return 20;      // ¥99999.99
-    if (amountStr.length <= 10) return 18;    // ¥9999999.99
-    if (amountStr.length <= 12) return 16;     // ¥999999999.99
-    return 14;                                // 更长的情况
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(
-        minHeight: 100,  // 最小高度,确保足够空间
-      ),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,  // 统一纯白色背景
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return Consumer<CurrencyManager>(
+      builder: (context, currencyManager, _) {
+        final symbol = currencyManager.current.symbol;
+        final amountStr = '${AppConstants.formatAmount(amount)} $symbol';
+
+        // 根据金额长度动态计算字体大小
+        double getAmountFontSize() {
+          if (amountStr.length <= 8) return 20;      // 99999.99 ¥
+          if (amountStr.length <= 10) return 18;    // 9999999.99 ¥
+          if (amountStr.length <= 12) return 16;     // 999999999.99 ¥
+          return 14;                                // 更长的情况
+        }
+
+        return Container(
+          constraints: const BoxConstraints(
+            minHeight: 100,  // 最小高度,确保足够空间
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,  // 内容垂直居中
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(icon, color: color, size: 20),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: const TextStyle(
-                  color: AppConstants.textSecondary,
-                  fontSize: 14,
-                ),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,  // 统一纯白色背景
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '¥${amount.toStringAsFixed(2)}',
-            style: TextStyle(
-              color: color,
-              fontSize: _getAmountFontSize(),  // 动态字体大小
-              fontWeight: FontWeight.bold,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,  // 防止换行
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,  // 内容垂直居中
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, color: color, size: 20),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppConstants.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Text(
+                amountStr,
+                style: TextStyle(
+                  color: color,
+                  fontSize: getAmountFontSize(),  // 动态字体大小
+                  fontWeight: FontWeight.bold,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,  // 防止换行
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -144,12 +150,17 @@ class BudgetProgressBar extends StatelessWidget {
                     color: AppConstants.textSecondary,
                   ),
                 ),
-                Text(
-                  '¥${spent.toStringAsFixed(2)} / ¥${budget.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppConstants.textSecondary,
-                  ),
+                Consumer<CurrencyManager>(
+                  builder: (context, currencyManager, _) {
+                    final symbol = currencyManager.current.symbol;
+                    return Text(
+                      '${spent.toStringAsFixed(2)} $symbol / ${budget.toStringAsFixed(2)} $symbol',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppConstants.textSecondary,
+                      ),
+                    );
+                  },
                 ),
               ],
             ),

@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
 import '../providers/transaction_provider.dart';
 import '../models/transaction_model.dart';
+import '../models/category_model.dart';
 import '../utils/constants.dart';
 
 /// 导入导出页面
@@ -231,7 +232,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
         sheet.appendRow([
           TextCellValue(DateFormat('yyyy-MM-dd').format(t.date)),
           TextCellValue(t.type == 'expense' ? '支出' : '收入'),
-          TextCellValue(t.category),
+          TextCellValue(_getCategoryName(t.category)),
           DoubleCellValue(t.amount),
           TextCellValue(t.note ?? ''),
         ]);
@@ -352,17 +353,21 @@ class _ImportExportPageState extends State<ImportExportPage> {
   String _mapCategory(String category) {
     final mapping = {
       '餐饮': 'food',
-      '交通': 'transport',
-      '购物': 'shopping',
-      '娱乐': 'entertainment',
-      '医疗': 'medical',
-      '教育': 'education',
-      '住房': 'housing',
-      '工资': 'salary',
-      '投资': 'investment',
+      '出行': 'transport',
+      '消费': 'shopping',
+      '居家': 'housing',
+      '薪资': 'salary',
+      '理财': 'investment',
       '其他': 'other',
     };
     return mapping[category] ?? category;
+  }
+
+  String _getCategoryName(String categoryId) {
+    final category = DefaultCategories.categories
+        .where((c) => c.id == categoryId)
+        .firstOrNull;
+    return category?.name ?? categoryId;
   }
 
   Future<void> _showImportModeDialog(Future<void> Function() onImport) async {

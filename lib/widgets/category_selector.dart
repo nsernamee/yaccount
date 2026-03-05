@@ -17,61 +17,77 @@ class CategorySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categories = DefaultCategories.categories;
+    final allCategories = DefaultCategories.categories;
+
+    // 根据交易类型筛选分类
+    final categories = allCategories.where((cat) {
+      if (transactionType == 'expense') {
+        // 支出分类：排除收入分类
+        return ['food', 'transport', 'shopping', 'housing', 'other'].contains(cat.id);
+      } else {
+        // 收入分类：只显示收入分类
+        return ['salary', 'investment', 'other'].contains(cat.id);
+      }
+    }).toList();
+
+    // 将"其他"分类移到最后
+    final otherCategory = categories.where((c) => c.id == 'other').firstOrNull;
+    final mainCategories = categories.where((c) => c.id != 'other').toList();
+
+    // 将所有分类放在一起，"其他"跟在后面
+    final displayCategories = [...mainCategories, if (otherCategory != null) otherCategory];
 
     return Wrap(
       spacing: 12,
       runSpacing: 12,
-      children: categories.map((category) {
+      children: displayCategories.map((category) {
         final isSelected = selectedCategory == category.id;
-        return GestureDetector(
-          onTap: () => onCategorySelected(category.id),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Color(category.colorValue).withValues(alpha: 0.2)
-                  : Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected
-                    ? Color(category.colorValue)
-                    : Colors.grey[300]!,
-                width: isSelected ? 2 : 1,
+        return _buildCategoryItem(category, isSelected);
+      }).toList(),
+    );
+  }
+
+  Widget _buildCategoryItem(CategoryModel category, bool isSelected) {
+    return GestureDetector(
+      onTap: () => onCategorySelected(category.id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? Color(category.colorValue).withValues(alpha: 0.2) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? Color(category.colorValue) : Colors.grey[300]!,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Color(category.colorValue).withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                _getIconData(category.icon),
+                size: 18,
+                color: Color(category.colorValue),
               ),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: Color(category.colorValue).withValues(alpha: 0.2),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _getIconData(category.icon),
-                    size: 18,
-                    color: Color(category.colorValue),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  category.name,
-                  style: TextStyle(
-                    color: isSelected
-                        ? Color(category.colorValue)
-                        : AppConstants.textPrimary,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-              ],
+            const SizedBox(width: 8),
+            Text(
+              category.name,
+              style: TextStyle(
+                color: isSelected ? Color(category.colorValue) : AppConstants.textPrimary,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
             ),
-          ),
-        );
-      }).toList(),
+          ],
+        ),
+      ),
     );
   }
 

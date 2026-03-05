@@ -47,7 +47,7 @@ class SettingsPage extends StatelessWidget {
                   const _SettingsTile(
                     icon: Icons.info_outline,
                     title: '版本',
-                    subtitle: '1.0.0',
+                    subtitle: '1.2.0',
                   ),
                   _SettingsTile(
                     icon: Icons.code,
@@ -335,7 +335,7 @@ class SettingsPage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('版本：1.0.0'),
+            Text('版本：1.2.0'),
             SizedBox(height: 12),
             Text(
               '一款安全、隐私的本地记账应用。\n\n特点：',

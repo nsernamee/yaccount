@@ -493,7 +493,7 @@ class _DateFilterSheetState extends State<_DateFilterSheet> {
   }
 }
 
-class _TransactionItem extends StatelessWidget {
+class _TransactionItem extends StatefulWidget {
   final TransactionModel transaction;
   final VoidCallback onDelete;
   final VoidCallback onEdit;
@@ -505,8 +505,15 @@ class _TransactionItem extends StatelessWidget {
   });
 
   @override
+  State<_TransactionItem> createState() => _TransactionItemState();
+}
+
+class _TransactionItemState extends State<_TransactionItem> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    final isExpense = transaction.type == 'expense';
+    final isExpense = widget.transaction.type == 'expense';
     final color = isExpense ? AppConstants.expenseColor : AppConstants.incomeColor;
 
     return Slidable(
@@ -514,14 +521,14 @@ class _TransactionItem extends StatelessWidget {
         motion: const ScrollMotion(),
         children: [
           SlidableAction(
-            onPressed: (_) => onEdit(),
+            onPressed: (_) => widget.onEdit(),
             backgroundColor: Colors.blue,
             foregroundColor: Colors.white,
             icon: Icons.edit,
             label: '编辑',
           ),
           SlidableAction(
-            onPressed: (_) => onDelete(),
+            onPressed: (_) => widget.onDelete(),
             backgroundColor: Colors.red,
             foregroundColor: Colors.white,
             icon: Icons.delete,
@@ -531,7 +538,6 @@ class _TransactionItem extends StatelessWidget {
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -543,62 +549,134 @@ class _TransactionItem extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            CategoryIcon(categoryId: transaction.category),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
                 children: [
+                  CategoryIcon(categoryId: widget.transaction.category),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getCategoryName(widget.transaction.category),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 16,
+                          ),
+                        ),
+                        if (widget.transaction.note != null && widget.transaction.note!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              widget.transaction.note!,
+                              style: const TextStyle(
+                                color: AppConstants.textSecondary,
+                                fontSize: 13,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
                   Text(
-                    _getCategoryName(transaction.category),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
+                    '${isExpense ? '-' : '+'}¥${AppConstants.formatAmount(widget.transaction.amount)}',
+                    style: TextStyle(
+                      color: color,
+                      fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
-                  if (transaction.note != null && transaction.note!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        transaction.note!,
-                        style: const TextStyle(
-                          color: AppConstants.textSecondary,
-                          fontSize: 13,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() => _isExpanded = !_isExpanded);
+                    },
+                    child: Icon(
+                      _isExpanded ? Icons.visibility : Icons.visibility_outlined,
+                      size: 20,
+                      color: AppConstants.textSecondary,
                     ),
+                  ),
                 ],
               ),
             ),
-            Text(
-              '${isExpense ? '-' : '+'}¥${transaction.amount.toStringAsFixed(2)}',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+            if (_isExpanded)
+              Container(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(12),
+                    bottomRight: Radius.circular(12),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailRow('金额', '${AppConstants.formatAmount(widget.transaction.amount)} ${context.read<CurrencyManager>().current.symbol}'),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('类型', isExpense ? '支出' : '收入'),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('分类', _getCategoryName(widget.transaction.category)),
+                    const SizedBox(height: 8),
+                    _buildDetailRow('日期', AppDateUtils.formatChineseDate(widget.transaction.date)),
+                    if (widget.transaction.note != null && widget.transaction.note!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _buildDetailRow('备注', widget.transaction.note!, isMultiline: true),
+                    ],
+                  ],
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildDetailRow(String label, String value, {bool isMultiline = false}) {
+    return Row(
+      crossAxisAlignment: isMultiline ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          width: 50,
+          child: Text(
+            label,
+            style: const TextStyle(
+              color: AppConstants.textSecondary,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppConstants.textPrimary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+
   String _getCategoryName(String categoryId) {
     final categories = {
       'food': '餐饮',
-      'transport': '交通',
-      'shopping': '购物',
-      'entertainment': '娱乐',
-      'medical': '医疗',
-      'education': '教育',
-      'housing': '住房',
-      'salary': '工资',
-      'investment': '投资',
+      'transport': '出行',
+      'shopping': '消费',
+      'housing': '居家',
+      'salary': '薪资',
+      'investment': '理财',
       'other': '其他',
     };
     return categories[categoryId] ?? '其他';
@@ -685,14 +763,18 @@ class _EditTransactionSheetState extends State<_EditTransactionSheet> {
   }
 
   Widget _buildAmountInput() {
-    return TextField(
-      controller: _amountController,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      decoration: InputDecoration(
-        labelText: '金额',
-        prefixText: '¥ ',
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
+    return     Consumer<CurrencyManager>(
+      builder: (context, currencyManager, _) {
+        return TextField(
+          controller: _amountController,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(
+            labelText: '金额',
+            prefixText: '${currencyManager.current.symbol} ',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      },
     );
   }
 

@@ -34,15 +34,14 @@ class CategoryModel {
 /// 默认分类列表
 class DefaultCategories {
   static List<CategoryModel> get categories => [
+    // 支出分类
     CategoryModel(id: 'food', name: '餐饮', icon: 'restaurant', colorValue: 0xFFFF6B6B),
-    CategoryModel(id: 'transport', name: '交通', icon: 'directions_car', colorValue: 0xFF4ECDC4),
-    CategoryModel(id: 'shopping', name: '购物', icon: 'shopping_bag', colorValue: 0xFFFFE66D),
-    CategoryModel(id: 'entertainment', name: '娱乐', icon: 'movie', colorValue: 0xFF95E1D3),
-    CategoryModel(id: 'medical', name: '医疗', icon: 'local_hospital', colorValue: 0xFFF38181),
-    CategoryModel(id: 'education', name: '教育', icon: 'school', colorValue: 0xFFAA96DA),
-    CategoryModel(id: 'housing', name: '住房', icon: 'home', colorValue: 0xFFFCBAD3),
-    CategoryModel(id: 'salary', name: '工资', icon: 'account_balance_wallet', colorValue: 0xFF6C5CE7),
-    CategoryModel(id: 'investment', name: '投资', icon: 'trending_up', colorValue: 0xFF00B894),
+    CategoryModel(id: 'transport', name: '出行', icon: 'directions_car', colorValue: 0xFF4ECDC4),
+    CategoryModel(id: 'shopping', name: '消费', icon: 'shopping_bag', colorValue: 0xFFFFE66D),
+    CategoryModel(id: 'housing', name: '居家', icon: 'home', colorValue: 0xFFFCBAD3),
     CategoryModel(id: 'other', name: '其他', icon: 'more_horiz', colorValue: 0xFF636E72),
+    // 收入分类
+    CategoryModel(id: 'salary', name: '薪资', icon: 'account_balance_wallet', colorValue: 0xFF6C5CE7),
+    CategoryModel(id: 'investment', name: '理财', icon: 'trending_up', colorValue: 0xFF00B894),
   ];
 }

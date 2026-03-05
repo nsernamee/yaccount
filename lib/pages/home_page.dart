@@ -154,45 +154,114 @@ class _HomeContentState extends State<_HomeContent> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const ImportExportPage(),
+              Row(
+                children: [
+                  // 货币选择器
+                  PopupMenuButton<Currency>(
+                    initialValue: context.read<CurrencyManager>().current,
+                    onSelected: (currency) async {
+                      await context.read<CurrencyManager>().setCurrency(currency);
+                    },
+                    offset: const Offset(0, 40),
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1,
+                    itemBuilder: (context) => Currency.supportedCurrencies
+                        .map((c) => PopupMenuItem(
+                              value: c,
+                              child: Row(
+                                children: [
+                                  Text(
+                                    c.symbol,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(c.name),
+                                ],
+                              ),
+                            ))
+                        .toList(),
+                    child: Consumer<CurrencyManager>(
+                      builder: (context, currencyManager, _) {
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                currencyManager.current.symbol,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.swap_horiz,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 6),
-                      const Text(
-                        '导入导出',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ImportExportPage(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
                         ),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.swap_horiz,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            '导入导出',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
             ],
           ),
@@ -202,44 +271,64 @@ class _HomeContentState extends State<_HomeContent> {
             style: TextStyle(color: Colors.white70, fontSize: 18),
           ),
           const SizedBox(height: 4),
-          Consumer<TransactionProvider>(
-            builder: (context, provider, _) {
+          Consumer2<TransactionProvider, CurrencyManager>(
+            builder: (context, provider, currencyManager, _) {
               final balance = (provider.monthStats['income'] ?? 0) -
                   (provider.monthStats['expense'] ?? 0);
               final isNegative = balance < 0;
-              return Row(
+              final isTrillion = balance.abs() >= 1000000000000;
+              final fontSize = isTrillion ? 28.0 : 42.0;
+              return Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  if (isNegative)
-                    Text(
-                      '-',
-                      style: TextStyle(
-                        color: isNegative ? Colors.red[400] : Colors.white,
-                        fontSize: 42,
-                        fontWeight: FontWeight.bold,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (isNegative && !isTrillion)
+                        Text(
+                          '-',
+                          style: TextStyle(
+                            color: isNegative ? Colors.red[400] : Colors.white,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      Text(
+                        AppConstants.formatAmountCompact(balance),
+                        style: TextStyle(
+                          color: isNegative ? Colors.red[400] : Colors.white,
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      if (!isTrillion)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4, right: 4),
+                          child: Text(
+                            currencyManager.current.symbol,
+                            style: TextStyle(
+                              color: isNegative ? Colors.red[400] : Colors.white,
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (isTrillion)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text(
+                        currencyManager.current.symbol,
+                        style: TextStyle(
+                          color: isNegative ? Colors.red[400] : Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  Text(
-                    balance.abs().toStringAsFixed(2),
-                    style: TextStyle(
-                      color: isNegative ? Colors.red[400] : Colors.white,
-                      fontSize: 42,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 4, right: 4),
-                    child: Text(
-                      '¥',
-                      style: TextStyle(
-                        color: isNegative ? Colors.red[400] : Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
                 ],
               );
             },

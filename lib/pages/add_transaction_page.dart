@@ -140,34 +140,39 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
           ),
         ),
         const SizedBox(height: 8),
-        TextField(
-          controller: _amountController,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          decoration: InputDecoration(
-            prefixText: '¥ ',
-            prefixStyle: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppConstants.textPrimary,
-            ),
-            hintText: '0.00',
-            filled: true,
-            fillColor: Colors.grey[50],
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: _transactionType == 'expense'
-                    ? AppConstants.expenseColor
-                    : AppConstants.incomeColor,
-                width: 2,
+        Consumer<CurrencyManager>(
+          builder: (context, currencyManager, _) {
+            return TextField(
+              controller: _amountController,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                labelText: '金额',
+                prefixText: '${currencyManager.current.symbol} ',
+                prefixStyle: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppConstants.textPrimary,
+                ),
+                hintText: '0.00',
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: _transactionType == 'expense'
+                        ? AppConstants.expenseColor
+                        : AppConstants.incomeColor,
+                    width: 2,
+                  ),
+                ),
               ),
-            ),
-          ),
+            );
+          },
         ),
       ],
     );

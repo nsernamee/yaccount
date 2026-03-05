@@ -39,6 +39,7 @@ class YAccountApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppProvider()..initialize()),
         ChangeNotifierProvider(create: (_) => TransactionProvider()),
         ChangeNotifierProvider(create: (_) => BudgetProvider()),
+        ChangeNotifierProvider(create: (_) => CurrencyManager.instance),
       ],
       child: MaterialApp(
         title: 'YAccount',
@@ -106,6 +107,9 @@ class _AppWrapperState extends State<_AppWrapper> {
     if (kIsWeb) {
       return;
     }
+
+    // 加载货币设置
+    await CurrencyManager.instance.load();
 
     // 等待数据库初始化完成
     final appProvider = context.read<AppProvider>();

@@ -35,8 +35,8 @@ class _BudgetPageState extends State<BudgetPage> {
         foregroundColor: AppConstants.textPrimary,
         elevation: 0,
       ),
-      body: Consumer2<BudgetProvider, TransactionProvider>(
-        builder: (context, budgetProvider, transactionProvider, _) {
+      body: Consumer3<BudgetProvider, TransactionProvider, CurrencyManager>(
+        builder: (context, budgetProvider, transactionProvider, currencyManager, _) {
           final monthStats = transactionProvider.monthStats;
           final spent = monthStats['expense'] ?? 0;
           final totalBudget = budgetProvider.totalBudget;
@@ -48,7 +48,7 @@ class _BudgetPageState extends State<BudgetPage> {
               children: [
                 _buildMonthSelector(),
                 const SizedBox(height: 20),
-                _buildTotalBudgetCard(spent, totalBudget?.amount ?? 0, budgetProvider),
+                _buildTotalBudgetCard(spent, totalBudget?.amount ?? 0, budgetProvider, currencyManager),
                 const SizedBox(height: 20),
                 _buildCategoryBudgets(spent, budgetProvider, transactionProvider),
               ],
@@ -129,9 +129,11 @@ class _BudgetPageState extends State<BudgetPage> {
     double spent,
     double budget,
     BudgetProvider provider,
+    CurrencyManager currencyManager,
   ) {
     final rate = provider.calculateUsageRate(spent, budget);
     final color = Color(provider.getUsageColor(rate));
+    final symbol = currencyManager.current.symbol;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -152,7 +154,7 @@ class _BudgetPageState extends State<BudgetPage> {
           Row(
             children: [
               Text(
-                budget > 0 ? '¥${budget.toStringAsFixed(2)}' : '未设置',
+                budget > 0 ? _formatBudgetAmount(budget, symbol) : '未设置',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -189,7 +191,7 @@ class _BudgetPageState extends State<BudgetPage> {
             BudgetProgressBar(spent: spent, budget: budget),
             const SizedBox(height: 8),
             Text(
-              '已花费 ¥${spent.toStringAsFixed(2)}，剩余 ¥${(budget - spent).toStringAsFixed(2)}',
+              '已花费 ${spent.toStringAsFixed(2)} $symbol，剩余 ${(budget - spent).toStringAsFixed(2)} $symbol',
               style: const TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ],
@@ -206,7 +208,10 @@ class _BudgetPageState extends State<BudgetPage> {
     final monthStart = DateTime(now.year, now.month, 1);
     final monthEnd = DateTime(now.year, now.month + 1, 0);
 
-    return Column(
+    return Consumer<CurrencyManager>(
+      builder: (context, currencyManager, _) {
+        final symbol = currencyManager.current.symbol;
+        return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
@@ -279,7 +284,7 @@ class _BudgetPageState extends State<BudgetPage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '¥${budget.amount.toStringAsFixed(2)}',
+                              _formatBudgetAmount(budget.amount, symbol),
                               style: const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(width: 2),
@@ -302,19 +307,18 @@ class _BudgetPageState extends State<BudgetPage> {
               );
             },
           ),
-      ],
+        ],
+      );
+    },
     );
   }
 
   String _getCategoryName(String categoryId) {
     final categories = {
       'food': '餐饮',
-      'transport': '交通',
-      'shopping': '购物',
-      'entertainment': '娱乐',
-      'medical': '医疗',
-      'education': '教育',
-      'housing': '住房',
+      'transport': '出行',
+      'shopping': '消费',
+      'housing': '居家',
     };
     return categories[categoryId] ?? categoryId;
   }
@@ -375,6 +379,14 @@ class _BudgetPageState extends State<BudgetPage> {
       await context.read<BudgetProvider>().deleteBudget(id);
     }
   }
+
+  /// 预算金额格式化，超过1亿使用Y（亿）
+  String _formatBudgetAmount(double amount, String symbol) {
+    if (amount.abs() >= 100000000) {
+      return '${(amount / 100000000).toStringAsFixed(2)}Y $symbol';
+    }
+    return '${AppConstants.formatAmount(amount)} $symbol';
+  }
 }
 
 class _AddBudgetDialog extends StatefulWidget {
@@ -391,7 +403,7 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
   final _amountController = TextEditingController();
   String _selectedCategory = 'food';
 
-  final _categories = ['food', 'transport', 'shopping', 'entertainment', 'medical', 'education', 'housing'];
+  final _categories = ['food', 'transport', 'shopping', 'housing'];
 
   @override
   void dispose() {
@@ -406,13 +418,17 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: '金额',
-              prefixText: '¥ ',
-            ),
+          Consumer<CurrencyManager>(
+            builder: (context, currencyManager, _) {
+              return TextField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: '金额',
+                  prefixText: '${currencyManager.current.symbol} ',
+                ),
+              );
+            },
           ),
           if (!widget.isTotal) ...[
             const SizedBox(height: 16),
@@ -513,13 +529,17 @@ class _EditTotalBudgetDialogState extends State<_EditTotalBudgetDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: '金额',
-              prefixText: '¥ ',
-            ),
+          Consumer<CurrencyManager>(
+            builder: (context, currencyManager, _) {
+              return TextField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: '金额',
+                  prefixText: '${currencyManager.current.symbol} ',
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -598,13 +618,17 @@ class _EditCategoryBudgetDialogState extends State<_EditCategoryBudgetDialog> {
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          TextField(
-            controller: _amountController,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
-              labelText: '金额',
-              prefixText: '¥ ',
-            ),
+          Consumer<CurrencyManager>(
+            builder: (context, currencyManager, _) {
+              return TextField(
+                controller: _amountController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: '金额',
+                  prefixText: '${currencyManager.current.symbol} ',
+                ),
+              );
+            },
           ),
         ],
       ),

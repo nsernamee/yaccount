@@ -655,14 +655,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
   String _getCategoryName(String categoryId) {
     final categories = {
       'food': '餐饮',
-      'transport': '交通',
-      'shopping': '购物',
-      'entertainment': '娱乐',
-      'medical': '医疗',
-      'education': '教育',
-      'housing': '住房',
-      'salary': '工资',
-      'investment': '投资',
+      'transport': '出行',
+      'shopping': '消费',
+      'housing': '居家',
+      'salary': '薪资',
+      'investment': '理财',
       'other': '其他',
     };
     return categories[categoryId] ?? '其他';
