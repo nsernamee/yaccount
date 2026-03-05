@@ -150,7 +150,7 @@ class _HomeContentState extends State<_HomeContent> {
                 'YAccount',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 28,
+                  fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -188,7 +188,7 @@ class _HomeContentState extends State<_HomeContent> {
                     child: Consumer<CurrencyManager>(
                       builder: (context, currencyManager, _) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
@@ -205,14 +205,14 @@ class _HomeContentState extends State<_HomeContent> {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 2),
                               const Icon(
                                 Icons.arrow_drop_down,
                                 color: Colors.white,
-                                size: 18,
+                                size: 16,
                               ),
                             ],
                           ),
@@ -231,7 +231,7 @@ class _HomeContentState extends State<_HomeContent> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
@@ -246,9 +246,9 @@ class _HomeContentState extends State<_HomeContent> {
                           const Icon(
                             Icons.swap_horiz,
                             color: Colors.white,
-                            size: 18,
+                            size: 14,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 2),
                           const Text(
                             '导入导出',
                             style: TextStyle(
@@ -261,7 +261,7 @@ class _HomeContentState extends State<_HomeContent> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                 ],
               ),
             ],
