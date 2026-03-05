@@ -131,15 +131,8 @@ class _HomeContentState extends State<_HomeContent> {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-        ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -149,13 +142,51 @@ class _HomeContentState extends State<_HomeContent> {
               const Text(
                 'YAccount',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppConstants.textPrimary,
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               Row(
                 children: [
+                  // 导入导出按钮
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ImportExportPage(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.swap_horiz,
+                            color: AppConstants.textSecondary,
+                            size: 16,
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            '导入导出',
+                            style: TextStyle(
+                              color: AppConstants.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
                   // 货币选择器
                   PopupMenuButton<Currency>(
                     initialValue: context.read<CurrencyManager>().current,
@@ -188,14 +219,10 @@ class _HomeContentState extends State<_HomeContent> {
                     child: Consumer<CurrencyManager>(
                       builder: (context, currencyManager, _) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: Colors.grey[200],
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -203,7 +230,7 @@ class _HomeContentState extends State<_HomeContent> {
                               Text(
                                 currencyManager.current.symbol,
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppConstants.textPrimary,
                                   fontWeight: FontWeight.bold,
                                   fontSize: 12,
                                 ),
@@ -211,7 +238,7 @@ class _HomeContentState extends State<_HomeContent> {
                               const SizedBox(width: 2),
                               const Icon(
                                 Icons.arrow_drop_down,
-                                color: Colors.white,
+                                color: AppConstants.textSecondary,
                                 size: 16,
                               ),
                             ],
@@ -220,107 +247,84 @@ class _HomeContentState extends State<_HomeContent> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const ImportExportPage(),
-                        ),
-                      );
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.swap_horiz,
-                            color: Colors.white,
-                            size: 14,
-                          ),
-                          const SizedBox(width: 2),
-                          const Text(
-                            '导入导出',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 20),
-          const Text(
-            '本月结余',
-            style: TextStyle(color: Colors.white70, fontSize: 18),
-          ),
-          const SizedBox(height: 4),
-          Consumer2<TransactionProvider, CurrencyManager>(
-            builder: (context, provider, currencyManager, _) {
-              final balance = (provider.monthStats['income'] ?? 0) -
-                  (provider.monthStats['expense'] ?? 0);
-              final isNegative = balance < 0;
-              final isTrillion = balance.abs() >= 1000000000000;
-              final fontSize = isTrillion ? 28.0 : 42.0;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      if (isNegative && !isTrillion)
+          const SizedBox(height: 8),
+          // 本月结余卡片
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '本月结余',
+                  style: TextStyle(
+                    color: AppConstants.textSecondary,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Consumer2<TransactionProvider, CurrencyManager>(
+                  builder: (context, provider, currencyManager, _) {
+                    final balance = (provider.monthStats['income'] ?? 0) -
+                        (provider.monthStats['expense'] ?? 0);
+                    final isNegative = balance < 0;
+                    final isTrillion = balance.abs() >= 1000000000000;
+                    final fontSize = isTrillion ? 24.0 : 36.0;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (isNegative && !isTrillion)
+                          Text(
+                            '-',
+                            style: TextStyle(
+                              color: isNegative ? AppConstants.expenseColor : AppConstants.textPrimary,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         Text(
-                          '-',
+                          AppConstants.formatAmountCompact(balance),
                           style: TextStyle(
-                            color: isNegative ? Colors.red[400] : Colors.white,
+                            color: isNegative ? AppConstants.expenseColor : AppConstants.textPrimary,
                             fontSize: fontSize,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      Text(
-                        AppConstants.formatAmountCompact(balance),
-                        style: TextStyle(
-                          color: isNegative ? Colors.red[400] : Colors.white,
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      if (!isTrillion)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4, right: 4),
-                          child: Text(
-                            currencyManager.current.symbol,
-                            style: TextStyle(
-                              color: isNegative ? Colors.red[400] : Colors.white,
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
+                        const SizedBox(width: 4),
+                        if (!isTrillion)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              currencyManager.current.symbol,
+                              style: TextStyle(
+                                color: isNegative ? AppConstants.expenseColor : AppConstants.textPrimary,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                ],
-              );
-            },
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ],
       ),
