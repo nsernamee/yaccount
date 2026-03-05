@@ -143,46 +143,38 @@ class _SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-          ),
-        ),
-        child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                Icons.account_balance_wallet,
-                size: 80,
-                color: Colors.white,
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.account_balance_wallet,
+              size: 80,
+              color: AppConstants.primaryColor,
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'YAccount',
+              style: TextStyle(
+                color: AppConstants.textPrimary,
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
               ),
-              SizedBox(height: 24),
-              Text(
-                'YAccount',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '本地记账，安全隐私',
+              style: TextStyle(
+                color: AppConstants.textSecondary,
+                fontSize: 16,
               ),
-              SizedBox(height: 8),
-              Text(
-                '本地记账，安全隐私',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
-              ),
-              SizedBox(height: 48),
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 48),
+            CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+            ),
+          ],
         ),
       ),
     );
@@ -196,52 +188,44 @@ class _WebNotSupportedScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-          ),
-        ),
-        child: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.phone_android,
-                  size: 80,
-                  color: Colors.white,
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.phone_android,
+                size: 80,
+                color: AppConstants.primaryColor,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'YAccount',
+                style: TextStyle(
+                  color: AppConstants.textPrimary,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
                 ),
-                SizedBox(height: 24),
-                Text(
-                  'YAccount',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Web 平台不支持',
+                style: TextStyle(
+                  color: AppConstants.textPrimary,
+                  fontSize: 20,
                 ),
-                SizedBox(height: 16),
-                Text(
-                  'Web 平台不支持',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20,
-                  ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                '请在 Android 或 iOS 设备上运行',
+                style: TextStyle(
+                  color: AppConstants.textSecondary,
+                  fontSize: 16,
                 ),
-                SizedBox(height: 8),
-                Text(
-                  '请在 Android 或 iOS 设备上运行',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

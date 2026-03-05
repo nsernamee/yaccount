@@ -22,18 +22,17 @@ class AppConstants {
   // 分页大小
   static const int pageSize = 20;
 
-  // 图表颜色
+  // 图表颜色（与分类顺序和颜色一致）
   static const List<Color> chartColors = [
-    Color(0xFFFF6B6B),
-    Color(0xFF4ECDC4),
-    Color(0xFFFFE66D),
-    Color(0xFF95E1D3),
-    Color(0xFFF38181),
-    Color(0xFFAA96DA),
-    Color(0xFFFCBAD3),
-    Color(0xFF6C5CE7),
-    Color(0xFF00B894),
-    Color(0xFF636E72),
+    Color(0xFFFF6B6B),  // 1. 餐饮 - 红
+    Color(0xFF4ECDC4),  // 2. 交通 - 青
+    Color(0xFFFFE66D),  // 3. 消费 - 黄
+    Color(0xFFFCBAD3),  // 4. 医疗 - 粉
+    Color(0xFF636E72),  // 5. 其他 - 灰
+    Color(0xFF6C5CE7),  // 6. 生活费 - 紫
+    Color(0xFF00B894),  // 7. 薪水 - 绿
+    Color(0xFFFFAA00),  // 8. 投资 - 橙
+    Color(0xFF636E72),  // 9. 收入其他 - 灰
   ];
 
   /// 格式化金额，超过8位时使用科学计数法（如 ¥1.23M、¥12.5K）

@@ -188,7 +188,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
         ...transactions.map((t) => [
               DateFormat('yyyy-MM-dd').format(t.date),
               t.type == 'expense' ? '支出' : '收入',
-              t.category,
+              _getCategoryName(t.category),
               t.amount.toString(),
               t.note ?? '',
             ]),
@@ -350,13 +350,17 @@ class _ImportExportPageState extends State<ImportExportPage> {
 
   String _mapCategory(String category) {
     final mapping = {
+      // 支出分类
       '餐饮': 'food',
-      '出行': 'transport',
+      '交通': 'transport',
       '消费': 'shopping',
-      '居家': 'housing',
-      '薪资': 'salary',
-      '理财': 'investment',
+      '医疗': 'medical',
       '其他': 'other',
+      // 收入分类
+      '生活费': 'living',
+      '薪水': 'salary',
+      '投资': 'investment',
+      '收入其他': 'income_other',
     };
     return mapping[category] ?? category;
   }

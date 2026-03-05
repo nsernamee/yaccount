@@ -672,12 +672,14 @@ class _TransactionItemState extends State<_TransactionItem> {
   String _getCategoryName(String categoryId) {
     final categories = {
       'food': '餐饮',
-      'transport': '出行',
+      'transport': '交通',
       'shopping': '消费',
-      'housing': '居家',
-      'salary': '薪资',
-      'investment': '理财',
+      'medical': '医疗',
       'other': '其他',
+      'living': '生活费',
+      'salary': '薪水',
+      'investment': '投资',
+      'income_other': '其他',
     };
     return categories[categoryId] ?? '其他';
   }

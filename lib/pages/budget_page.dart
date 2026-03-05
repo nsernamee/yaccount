@@ -316,9 +316,9 @@ class _BudgetPageState extends State<BudgetPage> {
   String _getCategoryName(String categoryId) {
     final categories = {
       'food': '餐饮',
-      'transport': '出行',
+      'transport': '交通',
       'shopping': '消费',
-      'housing': '居家',
+      'medical': '医疗',
     };
     return categories[categoryId] ?? categoryId;
   }
@@ -403,7 +403,7 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
   final _amountController = TextEditingController();
   String _selectedCategory = 'food';
 
-  final _categories = ['food', 'transport', 'shopping', 'housing'];
+  final _categories = ['food', 'transport', 'shopping', 'medical'];
 
   @override
   void dispose() {
@@ -465,11 +465,8 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
     final categories = {
       'food': '餐饮',
       'transport': '交通',
-      'shopping': '购物',
-      'entertainment': '娱乐',
+      'shopping': '消费',
       'medical': '医疗',
-      'education': '教育',
-      'housing': '住房',
     };
     return categories[categoryId] ?? categoryId;
   }
@@ -602,11 +599,8 @@ class _EditCategoryBudgetDialogState extends State<_EditCategoryBudgetDialog> {
     final categories = {
       'food': '餐饮',
       'transport': '交通',
-      'shopping': '购物',
-      'entertainment': '娱乐',
+      'shopping': '消费',
       'medical': '医疗',
-      'education': '教育',
-      'housing': '住房',
     };
     return categories[categoryId] ?? categoryId;
   }

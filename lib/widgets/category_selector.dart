@@ -22,11 +22,11 @@ class CategorySelector extends StatelessWidget {
     // 根据交易类型筛选分类
     final categories = allCategories.where((cat) {
       if (transactionType == 'expense') {
-        // 支出分类：排除收入分类
-        return ['food', 'transport', 'shopping', 'housing', 'other'].contains(cat.id);
+        // 支出分类
+        return ['food', 'transport', 'shopping', 'medical', 'other'].contains(cat.id);
       } else {
-        // 收入分类：只显示收入分类
-        return ['salary', 'investment', 'other'].contains(cat.id);
+        // 收入分类
+        return ['living', 'salary', 'investment', 'income_other'].contains(cat.id);
       }
     }).toList();
 
@@ -81,6 +81,7 @@ class CategorySelector extends StatelessWidget {
             Text(
               category.name,
               style: TextStyle(
+                fontSize: category.name.length > 2 ? 9 : 14,
                 color: isSelected ? Color(category.colorValue) : AppConstants.textPrimary,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
@@ -111,6 +112,10 @@ class CategorySelector extends StatelessWidget {
         return Icons.account_balance_wallet;
       case 'trending_up':
         return Icons.trending_up;
+      case 'work':
+        return Icons.work;
+      case 'payments':
+        return Icons.payments;
       default:
         return Icons.more_horiz;
     }
