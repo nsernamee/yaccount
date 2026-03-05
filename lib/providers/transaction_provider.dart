@@ -14,6 +14,8 @@ class TransactionProvider extends ChangeNotifier {
   int _currentPage = 0;
   static const int _pageSize = 20;
   String? _currentFilterType;
+  DateTime? _startDate;
+  DateTime? _endDate;
 
   // 统计数据缓存
   Map<String, double> _todayStats = {};
@@ -36,16 +38,23 @@ class TransactionProvider extends ChangeNotifier {
   }
 
   /// 加载交易记录（分页）
-  Future<void> loadTransactions({bool refresh = false, String? filterType}) async {
+  Future<void> loadTransactions({
+    bool refresh = false,
+    String? filterType,
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     if (_isLoading) return;
 
-    // 如果筛选类型改变，需要重新加载
-    if (filterType != _currentFilterType) {
+    // 如果筛选类型或日期改变，需要重新加载
+    if (filterType != _currentFilterType || startDate != _startDate || endDate != _endDate) {
       refresh = true;
     }
     _currentFilterType = filterType;
+    _startDate = startDate;
+    _endDate = endDate;
 
-    print('loadTransactions 被调用: refresh=$refresh, filterType=$filterType, _currentFilterType=$_currentFilterType');
+    print('loadTransactions 被调用: refresh=$refresh, filterType=$filterType, startDate=$startDate, endDate=$endDate');
 
     if (refresh) {
       _currentPage = 0;
@@ -59,11 +68,13 @@ class TransactionProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      print('查询数据库: page=$_currentPage, pageSize=$_pageSize, type=$filterType');
+      print('查询数据库: page=$_currentPage, pageSize=$_pageSize, type=$filterType, startDate=$startDate, endDate=$endDate');
       final newTransactions = await _db.getTransactions(
         page: _currentPage,
         pageSize: _pageSize,
         type: filterType == 'all' ? null : filterType, // 'all' 转换为 null 表示无筛选
+        startDate: startDate,
+        endDate: endDate,
       );
       print('查询结果数量: ${newTransactions.length}');
 

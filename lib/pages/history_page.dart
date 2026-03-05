@@ -19,6 +19,15 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   final ScrollController _scrollController = ScrollController();
   String _filterType = 'all'; // 使用 'all' 而不是 null
+  DateTime? _startDate;
+  DateTime? _endDate;
+  String _timeFilterText = '全部';
+
+  // 获取可选的年份列表（从2020到当前年份）
+  List<int> get _availableYears {
+    final currentYear = DateTime.now().year;
+    return List.generate(currentYear - 2019, (i) => currentYear - i);
+  }
 
   @override
   void initState() {
@@ -28,6 +37,8 @@ class _HistoryPageState extends State<HistoryPage> {
       context.read<TransactionProvider>().loadTransactions(
         refresh: true,
         filterType: _filterType,
+        startDate: _startDate,
+        endDate: _endDate,
       );
     });
   }
@@ -55,24 +66,58 @@ class _HistoryPageState extends State<HistoryPage> {
         foregroundColor: AppConstants.textPrimary,
         elevation: 0,
         actions: [
+          // 类型筛选按钮
           PopupMenuButton<String>(
-            key: ValueKey(_filterType), // 添加 key 强制重建
-            icon: const Icon(Icons.filter_list),
+            key: ValueKey(_filterType),
+            icon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.filter_list),
+                if (_filterType != 'all')
+                  Container(
+                    margin: const EdgeInsets.only(left: 4),
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: AppConstants.primaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
+            ),
             onSelected: (value) {
-              print('筛选选择: $value');
               setState(() => _filterType = value);
-              print('filterType 设置为: $_filterType');
-              context.read<TransactionProvider>().loadTransactions(
-                refresh: true,
-                filterType: _filterType,
-              );
+              _loadData();
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('全部')),
-              const PopupMenuItem(value: 'expense', child: Text('仅支出')),
-              const PopupMenuItem(value: 'income', child: Text('仅收入')),
+              _buildPopupMenuItem('all', '全部', _filterType),
+              _buildPopupMenuItem('expense', '仅支出', _filterType),
+              _buildPopupMenuItem('income', '仅收入', _filterType),
             ],
           ),
+          // 时间筛选按钮
+          IconButton(
+            icon: Stack(
+              children: [
+                const Icon(Icons.date_range),
+                if (_startDate != null || _endDate != null)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: AppConstants.primaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: () => _showDateRangePicker(context),
+          ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Consumer<TransactionProvider>(
@@ -88,6 +133,8 @@ class _HistoryPageState extends State<HistoryPage> {
             onRefresh: () => provider.loadTransactions(
               refresh: true,
               filterType: _filterType,
+              startDate: _startDate,
+              endDate: _endDate,
             ),
             child: ListView.builder(
               controller: _scrollController,
@@ -169,6 +216,279 @@ class _HistoryPageState extends State<HistoryPage> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => _EditTransactionSheet(transaction: transaction),
+    );
+  }
+
+  // 辅助方法：构建类型筛选菜单项
+  PopupMenuItem<String> _buildPopupMenuItem(String value, String text, String currentValue) {
+    final isSelected = value == currentValue;
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          if (isSelected)
+            const Icon(Icons.check, size: 18, color: AppConstants.primaryColor)
+          else
+            const SizedBox(width: 18),
+          const SizedBox(width: 8),
+          Text(text),
+        ],
+      ),
+    );
+  }
+
+  // 显示日期范围选择器
+  Future<void> _showDateRangePicker(BuildContext context) async {
+    final now = DateTime.now();
+    final currentYear = now.year;
+    int initialYear = _startDate?.year ?? currentYear;
+    int initialMonth = _startDate?.month ?? now.month;
+
+    // result: null=取消, 0=清除筛选, -1=全年, 其他=选择月份
+    // 同时返回选中的年份（通过回调获取）
+    final result = await showModalBottomSheet<Map<String, int?>>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _DateFilterSheet(
+        initialYear: initialYear,
+        initialMonth: initialMonth,
+        startDate: _startDate,
+        endDate: _endDate,
+      ),
+    );
+
+    if (result != null && mounted) {
+      final type = result['type']; // null=取消, 0=清除, -1=全年, 其他=月份
+      final selectedYear = result['year'] ?? currentYear;
+
+      setState(() {
+        if (type == 0) {
+          // 清除筛选
+          _startDate = null;
+          _endDate = null;
+          _timeFilterText = '全部';
+        } else if (type == -1) {
+          // 选择年份（全年）
+          _startDate = DateTime(selectedYear, 1, 1);
+          _endDate = DateTime(selectedYear, 12, 31);
+          _timeFilterText = '${selectedYear}年';
+        } else if (type != null) {
+          // 选择月份
+          final month = type;
+          _startDate = DateTime(selectedYear, month, 1);
+          _endDate = DateTime(selectedYear, month + 1, 0);
+          _timeFilterText = '${selectedYear}年$month月';
+        }
+      });
+      _loadData();
+    }
+  }
+
+  // 加载数据
+  void _loadData() {
+    context.read<TransactionProvider>().loadTransactions(
+      refresh: true,
+      filterType: _filterType,
+      startDate: _startDate,
+      endDate: _endDate,
+    );
+  }
+}
+
+/// 日期筛选底部弹窗
+class _DateFilterSheet extends StatefulWidget {
+  final int initialYear;
+  final int initialMonth;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const _DateFilterSheet({
+    required this.initialYear,
+    required this.initialMonth,
+    this.startDate,
+    this.endDate,
+  });
+
+  @override
+  State<_DateFilterSheet> createState() => _DateFilterSheetState();
+}
+
+class _DateFilterSheetState extends State<_DateFilterSheet> {
+  late int _selectedYear;
+  late int _selectedMonth;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedYear = widget.initialYear;
+    _selectedMonth = widget.initialMonth;
+  }
+
+  List<int> get _availableYears {
+    final currentYear = DateTime.now().year;
+    return List.generate(currentYear - 2019, (i) => currentYear - i);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final currentYear = now.year;
+    final isCurrentYear = _selectedYear == currentYear;
+    final maxMonth = isCurrentYear ? now.month : 12;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 顶部标题
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[200]!),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  '选择时间',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (widget.startDate != null || widget.endDate != null)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, {'type': 0, 'year': null}),
+                    child: const Text(
+                      '清除筛选',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          // 年月选择器
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // 年份选择
+                Expanded(
+                  child: Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListView.builder(
+                      itemCount: _availableYears.length,
+                      itemBuilder: (context, index) {
+                        final year = _availableYears[index];
+                        final isSelected = year == _selectedYear;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedYear = year;
+                              if (_selectedMonth > (year == currentYear ? now.month : 12)) {
+                                _selectedMonth = year == currentYear ? now.month : 12;
+                              }
+                            });
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            color: isSelected ? AppConstants.primaryColor.withValues(alpha: 0.1) : null,
+                            child: Text(
+                              '${year}年',
+                              style: TextStyle(
+                                color: isSelected ? AppConstants.primaryColor : null,
+                                fontWeight: isSelected ? FontWeight.bold : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // 月份选择
+                Expanded(
+                  child: Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListView.builder(
+                      itemCount: maxMonth,
+                      itemBuilder: (context, index) {
+                        final month = index + 1;
+                        final isSelected = month == _selectedMonth;
+                        return InkWell(
+                          onTap: () {
+                            setState(() {
+                              _selectedMonth = month;
+                            });
+                          },
+                          child: Container(
+                            alignment: Alignment.center,
+                            color: isSelected ? AppConstants.primaryColor.withValues(alpha: 0.1) : null,
+                            child: Text(
+                              '${month}月',
+                              style: TextStyle(
+                                color: isSelected ? AppConstants.primaryColor : null,
+                                fontWeight: isSelected ? FontWeight.bold : null,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // 快捷选项
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, {'type': -1, 'year': _selectedYear}),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey[200],
+                      foregroundColor: AppConstants.textPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('全年'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context, {'type': _selectedMonth, 'year': _selectedYear}),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppConstants.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('确认'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
     );
   }
 }
