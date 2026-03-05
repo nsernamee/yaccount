@@ -56,6 +56,8 @@ class _HomePageState extends State<HomePage> {
         onDestinationSelected: (index) {
           setState(() => _currentIndex = index);
         },
+        backgroundColor: const Color(0xFFF5FAFA),
+        indicatorColor: const Color(0xFF9EE1D8),
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),

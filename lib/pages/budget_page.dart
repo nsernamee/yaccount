@@ -58,7 +58,7 @@ class _BudgetPageState extends State<BudgetPage> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddBudgetDialog(context),
-        backgroundColor: AppConstants.primaryColor,
+        backgroundColor: const Color(0xFF9EE1D8),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -138,9 +138,7 @@ class _BudgetPageState extends State<BudgetPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-        ),
+        color: const Color(0xFF3C8488),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

@@ -101,11 +101,12 @@ class SettingsPage extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: Icon(Icons.lock, color: AppConstants.primaryColor),
+          leading: Icon(Icons.lock, color: const Color(0xFF3C8488)),
           title: const Text('数据库加密'),
           subtitle: Text(appProvider.isEncrypted ? '已启用' : '未启用'),
           trailing: Switch(
             value: appProvider.isEncrypted,
+            activeColor: const Color(0xFF3C8488),
             onChanged: (value) {
               if (value) {
                 _showSetPasswordDialog(context);
@@ -120,16 +121,16 @@ class SettingsPage extends StatelessWidget {
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppConstants.primaryColor.withValues(alpha: 0.08),
+            color: const Color(0xFF3C8488).withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AppConstants.primaryColor.withValues(alpha: 0.2)),
+            border: Border.all(color: const Color(0xFF3C8488).withValues(alpha: 0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.info_outline, size: 16, color: AppConstants.primaryColor),
+                  Icon(Icons.info_outline, size: 16, color: const Color(0xFF3C8488)),
                   const SizedBox(width: 6),
                   const Text(
                     '加密说明',
@@ -320,9 +321,7 @@ class SettingsPage extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-                ),
+                color: const Color(0xFF3C8488),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Icon(Icons.account_balance_wallet, color: Colors.white),
@@ -377,7 +376,7 @@ class _SettingsTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: Icon(icon, color: AppConstants.primaryColor),
+      leading: Icon(icon, color: const Color(0xFF3C8488)),
       title: Text(title),
       subtitle: Text(
         subtitle,

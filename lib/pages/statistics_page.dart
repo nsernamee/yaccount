@@ -121,7 +121,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? AppConstants.primaryColor : Colors.grey[600],
+              color: isSelected ? const Color(0xFF9EE1D8) : Colors.grey[600],
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -142,9 +142,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-        ),
+        color: const Color(0xFF3C8488),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -199,9 +197,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppConstants.primaryColor, Color(0xFF8B7CF7)],
-        ),
+        color: const Color(0xFF3C8488),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -251,6 +247,19 @@ class _StatisticsPageState extends State<StatisticsPage> {
       initialDatePickerMode: _viewMode == ViewMode.monthly
           ? DatePickerMode.year
           : DatePickerMode.year,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF3C8488),
+              onPrimary: Colors.white,
+              secondary: Color(0xFF9EE1D8),
+              onSecondary: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
@@ -309,7 +318,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppConstants.primaryColor : Colors.grey[200],
+          color: isSelected ? const Color(0xFF9EE1D8) : Colors.grey[200],
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(

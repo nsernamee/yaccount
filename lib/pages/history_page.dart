@@ -79,7 +79,7 @@ class _HistoryPageState extends State<HistoryPage> {
                     width: 8,
                     height: 8,
                     decoration: const BoxDecoration(
-                      color: AppConstants.primaryColor,
+                      color: Color(0xFF3C8488),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -108,7 +108,7 @@ class _HistoryPageState extends State<HistoryPage> {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(
-                        color: AppConstants.primaryColor,
+                        color: Color(0xFF3C8488),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -227,7 +227,7 @@ class _HistoryPageState extends State<HistoryPage> {
       child: Row(
         children: [
           if (isSelected)
-            const Icon(Icons.check, size: 18, color: AppConstants.primaryColor)
+            const Icon(Icons.check, size: 18, color: Color(0xFF3C8488))
           else
             const SizedBox(width: 18),
           const SizedBox(width: 8),
@@ -402,11 +402,11 @@ class _DateFilterSheetState extends State<_DateFilterSheet> {
                           },
                           child: Container(
                             alignment: Alignment.center,
-                            color: isSelected ? AppConstants.primaryColor.withValues(alpha: 0.1) : null,
+                            color: isSelected ? const Color(0xFF3C8488).withValues(alpha: 0.1) : null,
                             child: Text(
                               '${year}年',
                               style: TextStyle(
-                                color: isSelected ? AppConstants.primaryColor : null,
+                                color: isSelected ? const Color(0xFF3C8488) : null,
                                 fontWeight: isSelected ? FontWeight.bold : null,
                               ),
                             ),
@@ -438,11 +438,11 @@ class _DateFilterSheetState extends State<_DateFilterSheet> {
                           },
                           child: Container(
                             alignment: Alignment.center,
-                            color: isSelected ? AppConstants.primaryColor.withValues(alpha: 0.1) : null,
+                            color: isSelected ? const Color(0xFF3C8488).withValues(alpha: 0.1) : null,
                             child: Text(
                               '${month}月',
                               style: TextStyle(
-                                color: isSelected ? AppConstants.primaryColor : null,
+                                color: isSelected ? const Color(0xFF3C8488) : null,
                                 fontWeight: isSelected ? FontWeight.bold : null,
                               ),
                             ),
@@ -476,7 +476,7 @@ class _DateFilterSheetState extends State<_DateFilterSheet> {
                   child: ElevatedButton(
                     onPressed: () => Navigator.pop(context, {'type': _selectedMonth, 'year': _selectedYear}),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppConstants.primaryColor,
+                      backgroundColor: const Color(0xFF3C8488),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),

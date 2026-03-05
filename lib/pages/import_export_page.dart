@@ -110,7 +110,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Icon(icon, color: AppConstants.primaryColor),
+                Icon(icon, color: const Color(0xFF3C8488)),
                 const SizedBox(width: 8),
                 Text(
                   title,
@@ -558,7 +558,7 @@ class _ActionTile extends StatelessWidget {
               height: 24,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Icon(icon, color: AppConstants.primaryColor),
+          : Icon(icon, color: const Color(0xFF3C8488)),
       title: Text(title),
       subtitle: Text(subtitle),
       trailing: const Icon(Icons.chevron_right),
