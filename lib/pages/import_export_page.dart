@@ -195,8 +195,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
       ];
 
       final csv = const ListToCsvConverter().convert(csvData);
-      final file = await _saveFile(csv, 'yaccount_export.csv');
-      await _shareFile(file.path);
+      await _showExportOptions(csv, 'yaccount_export.csv', 'CSV', isText: true);
     } catch (e) {
       _showMessage('导出失败: $e');
     } finally {
@@ -241,8 +240,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
       final bytes = excel.encode();
       if (bytes == null) throw Exception('编码失败');
 
-      final file = await _saveFileBytes(bytes, 'yaccount_export.xlsx');
-      await _shareFile(file.path);
+      await _showExportOptions(bytes, 'yaccount_export.xlsx', 'Excel', isText: false);
     } catch (e) {
       _showMessage('导出失败: $e');
     } finally {
@@ -442,6 +440,71 @@ class _ImportExportPageState extends State<ImportExportPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  Future<void> _showExportOptions(dynamic data, String filename, String type, {required bool isText}) async {
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('导出'),
+        content: const Text('请选择导出方式:'),
+        actions: [
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'save'),
+                  icon: const Icon(Icons.save),
+                  label: const Text('保存到本地'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context, 'share'),
+                  icon: const Icon(Icons.share),
+                  label: const Text('分享'),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(context, 'cancel'),
+                child: const Text('取消'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    if (result == 'cancel') return;
+
+    try {
+      if (result == 'save') {
+        // 保存到本地
+        File file;
+        if (isText) {
+          file = await _saveFile(data as String, filename);
+        } else {
+          file = await _saveFileBytes(data as List<int>, filename);
+        }
+        _showMessage('文件已保存到: ${file.path}');
+      } else if (result == 'share') {
+        // 分享
+        File file;
+        if (isText) {
+          file = await _saveFile(data as String, filename);
+        } else {
+          file = await _saveFileBytes(data as List<int>, filename);
+        }
+        await _shareFile(file.path);
+      }
+    } catch (e) {
+      _showMessage('操作失败: $e');
+    }
   }
 
   void _showDeleteAllDialog() async {
