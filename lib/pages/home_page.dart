@@ -188,7 +188,7 @@ class _HomeContentState extends State<_HomeContent> {
                     child: Consumer<CurrencyManager>(
                       builder: (context, currencyManager, _) {
                         return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(20),
@@ -205,14 +205,14 @@ class _HomeContentState extends State<_HomeContent> {
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 14,
                                 ),
                               ),
                               const SizedBox(width: 4),
                               const Icon(
                                 Icons.arrow_drop_down,
                                 color: Colors.white,
-                                size: 20,
+                                size: 18,
                               ),
                             ],
                           ),
@@ -231,7 +231,7 @@ class _HomeContentState extends State<_HomeContent> {
                       );
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(20),
@@ -243,17 +243,17 @@ class _HomeContentState extends State<_HomeContent> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.swap_horiz,
                             color: Colors.white,
-                            size: 20,
+                            size: 18,
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           const Text(
                             '导入导出',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -261,6 +261,7 @@ class _HomeContentState extends State<_HomeContent> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 8),
                 ],
               ),
             ],
@@ -317,18 +318,6 @@ class _HomeContentState extends State<_HomeContent> {
                         ),
                     ],
                   ),
-                  if (isTrillion)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Text(
-                        currencyManager.current.symbol,
-                        style: TextStyle(
-                          color: isNegative ? Colors.red[400] : Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
                 ],
               );
             },
