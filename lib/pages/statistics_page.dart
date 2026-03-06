@@ -380,34 +380,37 @@ class _StatisticsPageState extends State<StatisticsPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Center(
-                    child: SizedBox(
-                      width: 220,
-                      child: PieChart(
-                        PieChartData(
-                          sectionsSpace: 1,
-                          centerSpaceRadius: 25,
-                          sections: data.entries.map((entry) {
-                            final index = data.keys.toList().indexOf(entry.key);
-                            final color = AppConstants.chartColors[
-                                index % AppConstants.chartColors.length];
-                            return PieChartSectionData(
-                              value: entry.value,
-                              color: color,
-                              radius: 45,
-                              title: '${(entry.value / total * 100).toStringAsFixed(0)}%',
-                              titleStyle: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            );
-                          }).toList(),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 30),
+                    child: Center(
+                      child: SizedBox(
+                        width: 180,
+                        child: PieChart(
+                          PieChartData(
+                            sectionsSpace: 1,
+                            centerSpaceRadius: 25,
+                            sections: data.entries.map((entry) {
+                              final index = data.keys.toList().indexOf(entry.key);
+                              final color = AppConstants.chartColors[
+                                  index % AppConstants.chartColors.length];
+                              return PieChartSectionData(
+                                value: entry.value,
+                                color: color,
+                                radius: 45,
+                                title: '${(entry.value / total * 100).toStringAsFixed(0)}%',
+                                titleStyle: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              );
+                            }).toList(),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 1),
                   Expanded(
                     flex: 1,
                     child: SingleChildScrollView(
