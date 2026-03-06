@@ -151,7 +151,7 @@ class _SplashScreen extends StatelessWidget {
             Icon(
               Icons.account_balance_wallet,
               size: 80,
-              color: AppConstants.primaryColor,
+              color: const Color(0xFF3C8488),
             ),
             const SizedBox(height: 24),
             Text(
@@ -172,7 +172,7 @@ class _SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 48),
             CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(AppConstants.primaryColor),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF3C8488)),
             ),
           ],
         ),
@@ -198,7 +198,7 @@ class _WebNotSupportedScreen extends StatelessWidget {
               Icon(
                 Icons.phone_android,
                 size: 80,
-                color: AppConstants.primaryColor,
+                color: const Color(0xFF3C8488),
               ),
               const SizedBox(height: 24),
               Text(
