@@ -160,16 +160,18 @@ class CategoryModel {
 | ID | 名称 | 图标 | 颜色 |
 |----|------|------|------|
 | food | 餐饮 | restaurant | #FF6B6B |
-| transport | 出行 | directions_car | #4ECDC4 |
+| transport | 交通 | directions_car | #4ECDC4 |
 | shopping | 消费 | shopping_bag | #FFE66D |
-| housing | 居家 | home | #FCBAD3 |
+| medical | 医疗 | local_hospital | #FCBAD3 |
 | other | 其他 | more_horiz | #636E72 |
 
 **收入分类：**
 | ID | 名称 | 图标 | 颜色 |
 |----|------|------|------|
-| salary | 薪资 | account_balance_wallet | #6C5CE7 |
-| investment | 理财 | trending_up | #00B894 |
+| living | 生活费 | account_balance_wallet | #6C5CE7 |
+| salary | 薪水 | work | #00B894 |
+| investment | 投资 | trending_up | #FDCB6E |
+| other | 其他 | more_horiz | #636E72 |
 
 ---
 
@@ -429,11 +431,12 @@ Future<void> loadTransactions({bool refresh = false, ...}) async {
 String _mapCategory(String category) {
   final mapping = {
     '餐饮': 'food',
-    '出行': 'transport',
+    '交通': 'transport',
     '消费': 'shopping',
-    '居家': 'housing',
-    '薪资': 'salary',
-    '理财': 'investment',
+    '医疗': 'medical',
+    '生活费': 'living',
+    '薪水': 'salary',
+    '投资': 'investment',
     '其他': 'other',
   };
   return mapping[category] ?? category;
@@ -513,7 +516,7 @@ flutter build ios --release
 
 ## 11. 版本信息
 
-当前版本：**1.2.0+5**
+当前版本：**1.3.0**
 
 版本格式：`major.minor.patch+build`
 

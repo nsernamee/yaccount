@@ -4,7 +4,7 @@
 
 ## 下载安装
 
-**[📱 下载 APK v1.2.0](https://github.com/nsernamee/yaccount/releases/tag/v1.2.0/app-release.apk)** - 支持 Android 5.0+
+**[📱 下载 APK v1.3.0](https://github.com/nsernamee/yaccount/releases/tag/v1.3.0/app-release.apk)** - 支持 Android 5.0+
 
 安装：下载 APK → 设置允许未知来源 → 安装
 
@@ -43,6 +43,7 @@ flutter build apk --release
 
 ## 版本历史
 
+- **v1.3.0** - UI全新绿色系主题、统计页面优化、分类体系重构
 - **v1.2.0** - 多货币支持、数据导出优化、数据库加密
 - **v1.0.0** - 初始版本
 
