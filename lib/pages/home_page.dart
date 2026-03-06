@@ -253,7 +253,7 @@ class _HomeContentState extends State<_HomeContent> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           // 本月结余卡片
           Container(
             width: double.infinity,
