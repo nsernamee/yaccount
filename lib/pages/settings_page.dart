@@ -208,13 +208,13 @@ class SettingsPage extends StatelessWidget {
             onPressed: () async {
               if (passwordController.text.length < 6) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('密码至少6位')),
+                  const SnackBar(content: Text('密码至少6位'), backgroundColor: Color(0xFFE17055)),
                 );
                 return;
               }
               if (passwordController.text != confirmController.text) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('两次密码不一致')),
+                  const SnackBar(content: Text('两次密码不一致'), backgroundColor: Color(0xFFE17055)),
                 );
                 return;
               }
@@ -223,7 +223,7 @@ class SettingsPage extends StatelessWidget {
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('加密已启用')),
+                  const SnackBar(content: Text('加密已启用'), backgroundColor: Color(0xFF00B894)),
                 );
               }
             },
@@ -270,7 +270,7 @@ class SettingsPage extends StatelessWidget {
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('加密已解除')),
+                  const SnackBar(content: Text('加密已解除'), backgroundColor: Color(0xFF00B894)),
                 );
               }
             },
@@ -300,7 +300,7 @@ class SettingsPage extends StatelessWidget {
               if (context.mounted) {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('数据已清空')),
+                  const SnackBar(content: Text('数据已清空'), backgroundColor: Color(0xFF00B894)),
                 );
               }
             },

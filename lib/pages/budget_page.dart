@@ -477,7 +477,7 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效金额')),
+        const SnackBar(content: Text('请输入有效金额'), backgroundColor: Color(0xFFE17055)),
       );
       return;
     }
@@ -559,7 +559,7 @@ class _EditTotalBudgetDialogState extends State<_EditTotalBudgetDialog> {
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效金额')),
+        const SnackBar(content: Text('请输入有效金额'), backgroundColor: Color(0xFFE17055)),
       );
       return;
     }
@@ -645,7 +645,7 @@ class _EditCategoryBudgetDialogState extends State<_EditCategoryBudgetDialog> {
     final amount = double.tryParse(_amountController.text);
     if (amount == null || amount <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效金额')),
+        const SnackBar(content: Text('请输入有效金额'), backgroundColor: Color(0xFFE17055)),
       );
       return;
     }

@@ -222,6 +222,17 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       initialDate: _selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF00B894),
+              onPrimary: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() => _selectedDate = picked);
@@ -336,7 +347,7 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_transactionType == 'expense' ? '支出已记录' : '收入已记录'),
-            backgroundColor: AppConstants.primaryColor,
+            backgroundColor: AppConstants.incomeColor,
           ),
         );
       }

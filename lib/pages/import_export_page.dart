@@ -195,7 +195,9 @@ class _ImportExportPageState extends State<ImportExportPage> {
       ];
 
       final csv = const ListToCsvConverter().convert(csvData);
-      await _showExportOptions(csv, 'yaccount_export.csv', 'CSV', isText: true);
+
+      final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+      await _showExportOptions(csv, '${dateStr}_账本导出.csv', 'CSV', isText: true);
     } catch (e) {
       _showMessage('导出失败: $e');
     } finally {
@@ -215,6 +217,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
       }
 
       final excel = Excel.createExcel();
+      excel.delete('Sheet1');
       final sheet = excel['账本'];
 
       // 添加表头
@@ -240,7 +243,8 @@ class _ImportExportPageState extends State<ImportExportPage> {
       final bytes = excel.encode();
       if (bytes == null) throw Exception('编码失败');
 
-      await _showExportOptions(bytes, 'yaccount_export.xlsx', 'Excel', isText: false);
+      final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+      await _showExportOptions(bytes, '${dateStr}_账本导出.xlsx', 'Excel', isText: false);
     } catch (e) {
       _showMessage('导出失败: $e');
     } finally {
@@ -423,14 +427,14 @@ class _ImportExportPageState extends State<ImportExportPage> {
   }
 
   Future<File> _saveFile(String content, String filename) async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
     final file = File('${dir.path}/$filename');
     await file.writeAsString(content);
     return file;
   }
 
   Future<File> _saveFileBytes(List<int> bytes, String filename) async {
-    final dir = await getApplicationDocumentsDirectory();
+    final dir = await getDownloadsDirectory() ?? await getApplicationDocumentsDirectory();
     final file = File('${dir.path}/$filename');
     await file.writeAsBytes(bytes);
     return file;
@@ -442,7 +446,10 @@ class _ImportExportPageState extends State<ImportExportPage> {
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF00B894),
+      ),
     );
   }
 
@@ -462,6 +469,10 @@ class _ImportExportPageState extends State<ImportExportPage> {
                   onPressed: () => Navigator.pop(context, 'save'),
                   icon: const Icon(Icons.save),
                   label: const Text('保存到本地'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00B894),
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
@@ -471,11 +482,18 @@ class _ImportExportPageState extends State<ImportExportPage> {
                   onPressed: () => Navigator.pop(context, 'share'),
                   icon: const Icon(Icons.share),
                   label: const Text('分享'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00B894),
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pop(context, 'cancel'),
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFF00B894),
+                ),
                 child: const Text('取消'),
               ),
             ],
