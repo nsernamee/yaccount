@@ -138,7 +138,11 @@ class _BudgetPageState extends State<BudgetPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF3C8488),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3C8488), Color(0xFF9EE1D8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(

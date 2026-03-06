@@ -257,7 +257,7 @@ class _HomeContentState extends State<_HomeContent> {
           // 本月结余卡片
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -540,6 +540,10 @@ class _HomeContentState extends State<_HomeContent> {
                   icon: Icons.arrow_downward,
                   label: '支出',
                   color: AppConstants.expenseColor,
+                  gradientColors: const [Color(0xFFD63031), Color(0xFFD66630)],
+                  secondaryGradientColors: const [Color(0xFFD69E30)],
+                  gradientBegin: Alignment.topRight,
+                  gradientEnd: Alignment.bottomLeft,
                   onTap: () => _showTransactionType(context, 'expense'),
                 ),
               ),
@@ -549,6 +553,10 @@ class _HomeContentState extends State<_HomeContent> {
                   icon: Icons.arrow_upward,
                   label: '收入',
                   color: AppConstants.incomeColor,
+                  gradientColors: const [Color(0xFF00B819), Color(0xFF00B857)],
+                  secondaryGradientColors: const [Color(0xFF2FE895)],
+                  gradientBegin: Alignment.topLeft,
+                  gradientEnd: Alignment.bottomRight,
                   onTap: () => _showTransactionType(context, 'income'),
                 ),
               ),
@@ -573,12 +581,20 @@ class _QuickActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final Color color;
+  final List<Color> gradientColors;
+  final List<Color>? secondaryGradientColors;
+  final AlignmentGeometry gradientBegin;
+  final AlignmentGeometry gradientEnd;
   final VoidCallback onTap;
 
   const _QuickActionButton({
     required this.icon,
     required this.label,
     required this.color,
+    required this.gradientColors,
+    this.secondaryGradientColors,
+    required this.gradientBegin,
+    required this.gradientEnd,
     required this.onTap,
   });
 
@@ -589,18 +605,27 @@ class _QuickActionButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          gradient: secondaryGradientColors != null
+              ? LinearGradient(
+                  colors: [...gradientColors, ...secondaryGradientColors!],
+                  begin: gradientBegin,
+                  end: gradientEnd,
+                )
+              : LinearGradient(
+                  colors: gradientColors,
+                  begin: gradientBegin,
+                  end: gradientEnd,
+                ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 32),
+            Icon(icon, color: Colors.white, size: 32),
             const SizedBox(height: 8),
             Text(
               label,
-              style: TextStyle(
-                color: color,
+              style: const TextStyle(
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
               ),
             ),

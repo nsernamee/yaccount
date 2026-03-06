@@ -121,7 +121,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? const Color(0xFF9EE1D8) : Colors.grey[600],
+              color: isSelected ? const Color(0xFF3C8488) : Colors.grey[600],
               fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
             ),
           ),
@@ -142,7 +142,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF3C8488),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3C8488), Color(0xFF9EE1D8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -197,7 +201,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF3C8488),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF3C8488), Color(0xFF9EE1D8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -318,7 +326,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF9EE1D8) : Colors.grey[200],
+          color: isSelected ? const Color(0xFF3C8488) : Colors.grey[200],
           borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
