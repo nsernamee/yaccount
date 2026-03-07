@@ -186,6 +186,10 @@ class CategoryIcon extends StatelessWidget {
         return Icons.account_balance_wallet;
       case 'trending_up':
         return Icons.trending_up;
+      case 'work':
+        return Icons.work;
+      case 'payments':
+        return Icons.payments;
       default:
         return Icons.more_horiz;
     }
