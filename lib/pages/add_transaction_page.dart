@@ -28,6 +28,12 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   void initState() {
     super.initState();
     _transactionType = widget.initialType ?? 'expense';
+    // 根据交易类型设置对应的默认分类
+    if (_transactionType == 'income') {
+      _selectedCategory = 'salary';
+    } else {
+      _selectedCategory = 'food';
+    }
   }
 
   @override
