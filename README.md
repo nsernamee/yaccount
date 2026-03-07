@@ -4,19 +4,23 @@
 
 ## 下载安装
 
-**[📱 下载 APK v1.3.0](https://github.com/nsernamee/yaccount/releases/tag/v1.3.0/app-release.apk)** - 支持 Android 5.0+
+**Android:**
+- **[📱 下载 APK](https://github.com/nsernamee/yaccount/releases)** - Android 5.0+
 
-安装：下载 APK → 设置允许未知来源 → 安装
+**Windows:**
+- **[💻 下载安装包](https://github.com/nsernamee/yaccount-windowsDesktop/releases)** - Windows 10/11
+
+**Android 安装：** 下载 APK → 设置允许未知来源 → 安装
 
 ## 功能特点
 
-- 📝 快速记账
-- 📊 数据统计（饼图、柱状图、折线图）
-- 💰 预算管理
-- 📜 历史记录（筛选、编辑、删除）
-- 📤 数据导入导出（CSV/Excel）
-- 🌍 多货币支持
-- 🔒 本地存储，无网络权限
+- 快速记账
+- 数据统计（饼图、柱状图、折线图）
+- 预算管理
+- 历史记录（筛选、编辑、删除）
+- 数据导入导出（CSV/Excel）
+- 多货币支持
+- 本地存储，无网络权限
 
 ## 技术栈
 
@@ -26,9 +30,26 @@
 
 ## 快速开始
 
+### Windows 桌面端
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/nsernamee/yaccount-windowsDesktop.git
+cd yaccount-windowsDesktop
+
+# 安装依赖
+flutter pub get
+
+# 运行
+flutter run
+
+# 构建 Windows
+flutter build windows --release
+```
+
+### Android 端
+```bash
+# 克隆项目
+git clone https://github.com/nsernamee/yaccount.git
 cd yaccount
 
 # 安装依赖
@@ -37,14 +58,21 @@ flutter pub get
 # 运行
 flutter run
 
-# 构建 APK
+# 构建 Android
 flutter build apk --release
 ```
 
+## 平台支持
+
+| 平台 | 状态 | 说明 |
+|------|------|------|
+| Android | ✅ 支持 | APK 安装包 |
+| Windows | ✅ 支持 | 桌面端 |
+
 ## 版本历史
 
-- **v1.3.0** - UI全新绿色系主题、统计页面优化、分类体系重构
-- **v1.2.0** - 多货币支持、数据导出优化、数据库加密
+- **v1.3.0** - UI全新绿色系主题、统计页面优化、分类体系重构、Windows桌面端支持
+- **v1.2.0** - 多货币支持、数据导出优化
 - **v1.0.0** - 初始版本
 
 ## 开源协议
