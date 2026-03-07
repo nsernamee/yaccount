@@ -105,6 +105,7 @@ class _HomeContentState extends State<_HomeContent> {
   Widget build(BuildContext context) {
     return SafeArea(
       child: RefreshIndicator(
+        color: const Color(0xFF42898D),
         onRefresh: () async {
           await context.read<TransactionProvider>().refresh();
           await context.read<BudgetProvider>().initialize();
