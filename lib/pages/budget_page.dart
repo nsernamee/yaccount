@@ -302,6 +302,11 @@ class _BudgetPageState extends State<BudgetPage> {
                         ),
                         const SizedBox(height: 8),
                         BudgetProgressBar(spent: spent, budget: budget.amount),
+                        const SizedBox(height: 4),
+                        Text(
+                          '已花费 ${spent.toStringAsFixed(2)} $symbol，剩余 ${(budget.amount - spent).toStringAsFixed(2)} $symbol',
+                          style: const TextStyle(color: AppConstants.textSecondary, fontSize: 12),
+                        ),
                       ],
                     ),
                   );
