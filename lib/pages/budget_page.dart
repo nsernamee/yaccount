@@ -458,10 +458,15 @@ class _AddBudgetDialogState extends State<_AddBudgetDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFF00B894)),
           child: const Text('取消'),
         ),
         ElevatedButton(
           onPressed: _saveBudget,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00B894),
+            foregroundColor: Colors.white,
+          ),
           child: const Text('保存'),
         ),
       ],
@@ -550,10 +555,15 @@ class _EditTotalBudgetDialogState extends State<_EditTotalBudgetDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFF00B894)),
           child: const Text('取消'),
         ),
         ElevatedButton(
           onPressed: _saveBudget,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00B894),
+            foregroundColor: Colors.white,
+          ),
           child: const Text('保存'),
         ),
       ],
@@ -636,10 +646,15 @@ class _EditCategoryBudgetDialogState extends State<_EditCategoryBudgetDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(foregroundColor: const Color(0xFF00B894)),
           child: const Text('取消'),
         ),
         ElevatedButton(
           onPressed: _saveBudget,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF00B894),
+            foregroundColor: Colors.white,
+          ),
           child: const Text('保存'),
         ),
       ],
