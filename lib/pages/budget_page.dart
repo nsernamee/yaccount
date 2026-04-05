@@ -27,6 +27,11 @@ class _BudgetPageState extends State<BudgetPage> {
 
   @override
   Widget build(BuildContext context) {
+    // 根据 _selectedMonth 计算日期范围
+    final selectedDate = AppDateUtils.fromMonthInt(_selectedMonth);
+    final monthStart = DateTime(selectedDate.year, selectedDate.month, 1);
+    final monthEnd = DateTime(selectedDate.year, selectedDate.month + 1, 0);
+
     return Scaffold(
       backgroundColor: AppConstants.backgroundColor,
       appBar: AppBar(
@@ -35,24 +40,39 @@ class _BudgetPageState extends State<BudgetPage> {
         foregroundColor: AppConstants.textPrimary,
         elevation: 0,
       ),
-      body: Consumer3<BudgetProvider, TransactionProvider, CurrencyManager>(
-        builder: (context, budgetProvider, transactionProvider, currencyManager, _) {
-          final monthStats = transactionProvider.monthStats;
-          final spent = monthStats['expense'] ?? 0;
+      body: Consumer2<BudgetProvider, TransactionProvider>(
+        builder: (context, budgetProvider, transactionProvider, _) {
           final totalBudget = budgetProvider.totalBudget;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildMonthSelector(),
-                const SizedBox(height: 20),
-                _buildTotalBudgetCard(spent, totalBudget?.amount ?? 0, budgetProvider, currencyManager),
-                const SizedBox(height: 20),
-                _buildCategoryBudgets(spent, budgetProvider, transactionProvider),
-              ],
+          return FutureBuilder<Map<String, double>>(
+            future: transactionProvider.getCategoryStats(
+              startDate: monthStart,
+              endDate: monthEnd,
+              type: 'expense',
             ),
+            builder: (context, snapshot) {
+              // 汇总所有分类的支出作为总支出
+              final categoryStats = snapshot.data ?? {};
+              final spent = categoryStats.values.fold(0.0, (sum, value) => sum + value);
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildMonthSelector(),
+                    const SizedBox(height: 20),
+                    Consumer<CurrencyManager>(
+                      builder: (context, currencyManager, _) {
+                        return _buildTotalBudgetCard(spent, totalBudget?.amount ?? 0, budgetProvider, currencyManager);
+                      },
+                    ),
+                    const SizedBox(height: 20),
+                    _buildCategoryBudgets(budgetProvider, transactionProvider, categoryStats),
+                  ],
+                ),
+              );
+            },
           );
         },
       ),
@@ -202,18 +222,11 @@ class _BudgetPageState extends State<BudgetPage> {
     );
   }
 
-  Widget _buildCategoryBudgets(double totalSpent, BudgetProvider provider, TransactionProvider transactionProvider) {
+  Widget _buildCategoryBudgets(BudgetProvider provider, TransactionProvider transactionProvider, Map<String, double> categoryStats) {
     final categoryBudgets = provider.budgets.where((b) => b.category != 'total');
+    final symbol = Provider.of<CurrencyManager>(context, listen: false).current.symbol;
 
-    // 获取当前月份的开始和结束日期
-    final now = AppDateUtils.fromMonthInt(_selectedMonth);
-    final monthStart = DateTime(now.year, now.month, 1);
-    final monthEnd = DateTime(now.year, now.month + 1, 0);
-
-    return Consumer<CurrencyManager>(
-      builder: (context, currencyManager, _) {
-        final symbol = currencyManager.current.symbol;
-        return Column(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
@@ -236,87 +249,74 @@ class _BudgetPageState extends State<BudgetPage> {
             ),
           )
         else
-          FutureBuilder<Map<String, double>>(
-            future: transactionProvider.getCategoryStats(
-              startDate: monthStart,
-              endDate: monthEnd,
-              type: 'expense',
-            ),
-            builder: (context, snapshot) {
-              final categoryStats = snapshot.data ?? {};
+          Column(
+            children: categoryBudgets.map((budget) {
+              // 计算该分类已花费
+              final spent = categoryStats[budget.category] ?? 0.0;
+              final rate = provider.calculateUsageRate(spent, budget.amount);
 
-              return Column(
-                children: categoryBudgets.map((budget) {
-                  // 计算该分类已花费
-                  final spent = categoryStats[budget.category] ?? 0.0;
-                  final rate = provider.calculateUsageRate(spent, budget.amount);
-
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _getCategoryName(budget.category),
-                                style: const TextStyle(fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Color(provider.getUsageColor(rate)).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '${rate.toStringAsFixed(1)}%',
-                                style: TextStyle(
-                                  color: Color(provider.getUsageColor(rate)),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatBudgetAmount(budget.amount, symbol),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(width: 2),
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined, size: 20),
-                              onPressed: () => _showEditCategoryBudgetDialog(context, budget),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 20),
-                              onPressed: () => _deleteBudget(budget.id),
-                            ),
-                          ],
+                        Expanded(
+                          child: Text(
+                            _getCategoryName(budget.category),
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
                         ),
-                        const SizedBox(height: 8),
-                        BudgetProgressBar(spent: spent, budget: budget.amount),
-                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Color(provider.getUsageColor(rate)).withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${rate.toStringAsFixed(1)}%',
+                            style: TextStyle(
+                              color: Color(provider.getUsageColor(rate)),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Text(
-                          '已花费 ${spent.toStringAsFixed(2)} $symbol，剩余 ${(budget.amount - spent).toStringAsFixed(2)} $symbol',
-                          style: const TextStyle(color: AppConstants.textSecondary, fontSize: 12),
+                          _formatBudgetAmount(budget.amount, symbol),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(width: 2),
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 20),
+                          onPressed: () => _showEditCategoryBudgetDialog(context, budget),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 20),
+                          onPressed: () => _deleteBudget(budget.id),
                         ),
                       ],
                     ),
-                  );
-                }).toList(),
+                    const SizedBox(height: 8),
+                    BudgetProgressBar(spent: spent, budget: budget.amount),
+                    const SizedBox(height: 4),
+                    Text(
+                      '已花费 ${spent.toStringAsFixed(2)} $symbol，剩余 ${(budget.amount - spent).toStringAsFixed(2)} $symbol',
+                      style: const TextStyle(color: AppConstants.textSecondary, fontSize: 12),
+                    ),
+                  ],
+                ),
               );
-            },
+            }).toList(),
           ),
-        ],
-      );
-    },
+      ],
     );
   }
 
